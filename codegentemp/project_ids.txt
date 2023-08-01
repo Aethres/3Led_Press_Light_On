@@ -1,0 +1,6 @@
+c:\Users\turan\Desktop\Dev\Workspace01\Test\Test1P.cydsn\Test1P.cyprj|2d8d8e81-4822-4216-9907-e57abee7952f
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\default\CyAnnotationLibrary\CyAnnotationLibrary.cylib\CyAnnotationLibrary.cyprj|c9e8183c-b2e7-45b5-adaa-fe4d3481ee58
+C:\Users\turan\Documents\PSoC Creator\4.4\Downloads ( 4.4).cylib\Downloads ( 4.4).cyprj|ba1a79bd-f0e9-4320-93cd-f781a9e2f12b
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cycomponentlibraryupdates\CyComponentLibraryUpdates.cylib\CyComponentLibraryUpdates.cyprj|3746fe8d-50fe-4771-bdbc-7dee0abdb456
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CyComponentLibrary.cyprj|8922a0d5-bc59-4c6a-987c-9fff34356100
+C:\Program Files (x86)\Cypress\PSoC Creator\4.4\PSoC Creator\psoc\content\cyprimitives\CyPrimitives.cylib\CyPrimitives.cyprj|f11d36bf-0646-4b7e-b956-58913f98b2e3

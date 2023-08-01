@@ -1,0 +1,4399 @@
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m0
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"process_ui.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.processUiThread,"ax",%progbits
+  20              		.align	2
+  21              		.code	16
+  22              		.thumb_func
+  23              		.type	processUiThread, %function
+  24              	processUiThread:
+  25              	.LFB43:
+  26              		.file 1 "app\\process_ui.c"
+   1:app/process_ui.c **** /** @file       process_ui.c
+   2:app/process_ui.c ****  *  @brief      PROCESS_UI application program file
+   3:app/process_ui.c ****  *  @copyright  (c) 2021-Arcelik - All Rights Reserved
+   4:app/process_ui.c ****  *              Permission to use, reproduce, copy, prepare derivative works,
+   5:app/process_ui.c ****  *              modify, distribute, perform, display or sell this software and/or
+   6:app/process_ui.c ****  *              its documentation for any purpose is prohibited without the express
+   7:app/process_ui.c ****  *              written consent of Arcelik A.S.
+   8:app/process_ui.c ****  *  @author     mertGemalmaz
+   9:app/process_ui.c ****  *  @date       01.06.2021
+  10:app/process_ui.c ****  */
+  11:app/process_ui.c **** #define FILE_PROCESS_UI_C
+  12:app/process_ui.c **** 
+  13:app/process_ui.c **** #include "process_ui.h"
+  14:app/process_ui.c **** #include "rcos.h"
+  15:app/process_ui.c **** #include "system.h"
+  16:app/process_ui.c **** #include "dev\sevenSegmentdisplay.h"
+  17:app/process_ui.c **** #define DEBUG_FILE_NAME ""
+  18:app/process_ui.c **** 
+  19:app/process_ui.c **** // #define DEBUG_PORT_
+  20:app/process_ui.c **** // DEBUG_START(0)
+  21:app/process_ui.c **** 
+  22:app/process_ui.c **** /**
+  23:app/process_ui.c ****  *  @addtogroup PROCESS_UI
+  24:app/process_ui.c ****  *  @{
+  25:app/process_ui.c ****  */
+  26:app/process_ui.c **** 
+  27:app/process_ui.c **** 
+  28:app/process_ui.c **** 
+  29:app/process_ui.c **** 
+  30:app/process_ui.c **** #define BUZZER_BEEP(data) (devIoPut(params->patternBuzzer, (uint32_t)data))
+  31:app/process_ui.c **** #define CHILD_LOCK_ENABLE TRUE
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 2
+
+
+  32:app/process_ui.c **** #define CHILD_LOCK_DISABLE FALSE
+  33:app/process_ui.c **** #define HALF_SECOND_IN_MS (500)
+  34:app/process_ui.c **** #define ONE_SECOND_IN_MS (1000)
+  35:app/process_ui.c **** #define TWO_SECOND_IN_MS (2000)
+  36:app/process_ui.c **** #define THREE_SECOND_IN_MS (3000)
+  37:app/process_ui.c **** #define FOUR_SECOND_IN_MS (4000)
+  38:app/process_ui.c **** #define FIVE_SECOND_IN_MS (5000)
+  39:app/process_ui.c **** #define BUTON_SHORT_PRESS_DURATION (50)
+  40:app/process_ui.c **** #define BUTON_LONG_PRESS_DURATION (THREE_SECOND_IN_MS)
+  41:app/process_ui.c **** #define SEVSEG_MAX_COUNT 19
+  42:app/process_ui.c **** #define SEVSEG_MIN_COUNT 0
+  43:app/process_ui.c **** 
+  44:app/process_ui.c **** /// @brief  Local Variables
+  45:app/process_ui.c **** typedef enum
+  46:app/process_ui.c **** {
+  47:app/process_ui.c ****     eLedP43,
+  48:app/process_ui.c ****     eLedP44,
+  49:app/process_ui.c ****     eLedP45,
+  50:app/process_ui.c **** } teLeds;
+  51:app/process_ui.c **** 
+  52:app/process_ui.c **** typedef enum
+  53:app/process_ui.c **** {
+  54:app/process_ui.c ****     eBuzzerLevel1 = 5,
+  55:app/process_ui.c ****     eBuzzerLevel2 = 10,
+  56:app/process_ui.c ****     eBuzzerLevel3 = 30,
+  57:app/process_ui.c **** } teBuzzerSoundLevel;
+  58:app/process_ui.c **** 
+  59:app/process_ui.c **** typedef struct
+  60:app/process_ui.c **** {
+  61:app/process_ui.c ****     uint8_t p46;
+  62:app/process_ui.c ****     teBool p70;
+  63:app/process_ui.c ****     teBool p71;
+  64:app/process_ui.c **** } tsButonStatus; //0: not pressed    1: is pressing
+  65:app/process_ui.c **** 
+  66:app/process_ui.c **** tsButonStatus guiButonStatus;
+  67:app/process_ui.c **** uint8_t sevSegCounter = 0;
+  68:app/process_ui.c **** uint8_t encoderStat = 0;
+  69:app/process_ui.c **** uint8_t encoderStatPrev = 0;
+  70:app/process_ui.c **** 
+  71:app/process_ui.c **** /// @brief  Buzzer Melodies
+  72:app/process_ui.c **** const tsPatternNode melodyArcelik[] =
+  73:app/process_ui.c ****     {
+  74:app/process_ui.c **** #define M_TEMPO TEMPO_Lento
+  75:app/process_ui.c ****         MELODY_TELVE_ARCELIK,
+  76:app/process_ui.c ****         PATTERN_NODE_END(0)
+  77:app/process_ui.c ****     };
+  78:app/process_ui.c **** 
+  79:app/process_ui.c **** const tsPatternNode melodyPres[] =
+  80:app/process_ui.c ****     {
+  81:app/process_ui.c ****         {NOTE_7_A, 150},
+  82:app/process_ui.c ****         PATTERN_NODE_END(0)
+  83:app/process_ui.c ****     };
+  84:app/process_ui.c **** 
+  85:app/process_ui.c **** const tsPatternNode melodyRelease[] =
+  86:app/process_ui.c ****     {
+  87:app/process_ui.c ****         {NOTE_7_G, 150},
+  88:app/process_ui.c ****         PATTERN_NODE_END(0)
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 3
+
+
+  89:app/process_ui.c ****     };
+  90:app/process_ui.c **** 
+  91:app/process_ui.c **** const tsPatternNode melodyKeyWarning[] =
+  92:app/process_ui.c ****     {
+  93:app/process_ui.c ****         {4000, 150},
+  94:app/process_ui.c ****         {3000, 200},
+  95:app/process_ui.c ****         {4000, 150},
+  96:app/process_ui.c ****         PATTERN_NODE_END(0)};
+  97:app/process_ui.c **** 
+  98:app/process_ui.c **** const tsPatternNode melodyLock[] =
+  99:app/process_ui.c ****     {
+ 100:app/process_ui.c ****         {NOTE_7_A, 150},
+ 101:app/process_ui.c ****         {NOTE_7_B, 200},
+ 102:app/process_ui.c ****         {NOTE_7_C, 150},
+ 103:app/process_ui.c ****         PATTERN_NODE_END(0)
+ 104:app/process_ui.c ****     };
+ 105:app/process_ui.c **** 
+ 106:app/process_ui.c **** /// @brief  Local Function Prototypes
+ 107:app/process_ui.c **** static PROCESS_HANDLER_PROTO(processUiHandler);
+ 108:app/process_ui.c **** static void guiDefaultHandler(tsProcess *process);
+ 109:app/process_ui.c **** void ledGuiHandler(tsProcess *process, teLeds led, uint8 onOff);
+ 110:app/process_ui.c **** void allLedsOnOff(tsProcess *process, uint8 onOff);
+ 111:app/process_ui.c **** void buttonMapper(tsProcess *process, teProcessUiEvents event, uint16_t pressDuration, teBool *buto
+ 112:app/process_ui.c **** 
+ 113:app/process_ui.c **** static PT_THREAD(processUiThread)
+ 114:app/process_ui.c **** {
+  27              		.loc 1 114 0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32              	.LVL0:
+  33              	.LBB2:
+ 115:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 116:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 117:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 118:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 119:app/process_ui.c ****     PT_BEGIN();
+  34              		.loc 1 119 0
+  35 0000 0022     		movs	r2, #0
+  36 0002 8B5E     		ldrsh	r3, [r1, r2]
+  37 0004 002B     		cmp	r3, #0
+  38 0006 02D0     		beq	.L3
+  39 0008 7B2B     		cmp	r3, #123
+  40 000a 04D0     		beq	.L6
+  41 000c 07E0     		b	.L8
+  42              	.LVL1:
+  43              	.L3:
+ 120:app/process_ui.c **** 
+ 121:app/process_ui.c ****     for (;;)
+ 122:app/process_ui.c ****     {
+ 123:app/process_ui.c ****         PT_YIELD();
+  44              		.loc 1 123 0
+  45 000e 7B23     		movs	r3, #123
+  46 0010 0B80     		strh	r3, [r1]
+  47 0012 0023     		movs	r3, #0
+  48 0014 00E0     		b	.L4
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 4
+
+
+  49              	.LVL2:
+  50              	.L6:
+ 119:app/process_ui.c **** 
+  51              		.loc 1 119 0
+  52 0016 0123     		movs	r3, #1
+  53              	.LVL3:
+  54              	.L4:
+  55              		.loc 1 123 0 discriminator 1
+  56 0018 002B     		cmp	r3, #0
+  57 001a F8D1     		bne	.L3
+  58 001c 03E0     		b	.L7
+  59              	.LVL4:
+  60              	.L8:
+ 124:app/process_ui.c ****     }
+ 125:app/process_ui.c **** 
+ 126:app/process_ui.c ****     PT_END();
+  61              		.loc 1 126 0
+  62 001e 0023     		movs	r3, #0
+  63 0020 0B80     		strh	r3, [r1]
+  64              	.LVL5:
+  65 0022 0020     		movs	r0, #0
+  66              	.LVL6:
+  67 0024 00E0     		b	.L5
+  68              	.LVL7:
+  69              	.L7:
+ 123:app/process_ui.c ****     }
+  70              		.loc 1 123 0
+  71 0026 0120     		movs	r0, #1
+  72              	.LVL8:
+  73              	.L5:
+  74              	.LBE2:
+ 127:app/process_ui.c **** }
+  75              		.loc 1 127 0
+  76              		@ sp needed
+  77 0028 7047     		bx	lr
+  78              		.cfi_endproc
+  79              	.LFE43:
+  80              		.size	processUiThread, .-processUiThread
+  81 002a C046     		.section	.text.processUiInit,"ax",%progbits
+  82              		.align	2
+  83              		.global	processUiInit
+  84              		.code	16
+  85              		.thumb_func
+  86              		.type	processUiInit, %function
+  87              	processUiInit:
+  88              	.LFB44:
+ 128:app/process_ui.c **** 
+ 129:app/process_ui.c **** 
+ 130:app/process_ui.c **** /// @brief  Initialization function of processUi
+ 131:app/process_ui.c **** PROCESS_INIT_PROTO(processUiInit)
+ 132:app/process_ui.c **** {
+  89              		.loc 1 132 0
+  90              		.cfi_startproc
+  91              		@ args = 0, pretend = 0, frame = 0
+  92              		@ frame_needed = 0, uses_anonymous_args = 0
+  93              	.LVL9:
+  94 0000 70B5     		push	{r4, r5, r6, lr}
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 5
+
+
+  95              		.cfi_def_cfa_offset 16
+  96              		.cfi_offset 4, -16
+  97              		.cfi_offset 5, -12
+  98              		.cfi_offset 6, -8
+  99              		.cfi_offset 14, -4
+ 133:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 100              		.loc 1 133 0
+ 101 0002 8469     		ldr	r4, [r0, #24]
+ 102              	.LVL10:
+ 134:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 103              		.loc 1 134 0
+ 104 0004 C569     		ldr	r5, [r0, #28]
+ 105              	.LVL11:
+ 135:app/process_ui.c **** 
+ 136:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 137:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 138:app/process_ui.c **** 
+ 139:app/process_ui.c ****     PROCESS_STATE_CHANGE(process, processUiHandler);
+ 106              		.loc 1 139 0
+ 107 0006 0369     		ldr	r3, [r0, #16]
+ 108 0008 4361     		str	r3, [r0, #20]
+ 109 000a 114B     		ldr	r3, .L10
+ 110 000c 0361     		str	r3, [r0, #16]
+ 140:app/process_ui.c ****     threadStart(process, processUiThread);
+ 111              		.loc 1 140 0
+ 112 000e 1149     		ldr	r1, .L10+4
+ 113 0010 FFF7FEFF 		bl	threadStart
+ 114              	.LVL12:
+ 141:app/process_ui.c ****     //process->initialized = 1; // If process needs other checks, set this another time
+ 142:app/process_ui.c **** 
+ 143:app/process_ui.c ****     devIoInit(consts->csdDevIo, NULL);      //init capsense object
+ 115              		.loc 1 143 0
+ 116 0014 2868     		ldr	r0, [r5]
+ 117 0016 0021     		movs	r1, #0
+ 118 0018 FFF7FEFF 		bl	devIoInit
+ 119              	.LVL13:
+ 144:app/process_ui.c ****     devIoInit(params->leds, NULL);          //init led object
+ 120              		.loc 1 144 0
+ 121 001c 0021     		movs	r1, #0
+ 122 001e A06B     		ldr	r0, [r4, #56]
+ 123 0020 FFF7FEFF 		bl	devIoInit
+ 124              	.LVL14:
+ 145:app/process_ui.c ****     devIoInit(params->patternBuzzer, NULL); //init buzzer pattern object
+ 125              		.loc 1 145 0
+ 126 0024 0021     		movs	r1, #0
+ 127 0026 206C     		ldr	r0, [r4, #64]
+ 128 0028 FFF7FEFF 		bl	devIoInit
+ 129              	.LVL15:
+ 146:app/process_ui.c ****     devIoInit(params->buzzerLevel, NULL);   //init buzzer sound level object
+ 130              		.loc 1 146 0
+ 131 002c 0021     		movs	r1, #0
+ 132 002e E06B     		ldr	r0, [r4, #60]
+ 133 0030 FFF7FEFF 		bl	devIoInit
+ 134              	.LVL16:
+ 147:app/process_ui.c **** 
+ 148:app/process_ui.c ****     devIoPut(params->buzzerLevel, eBuzzerLevel3); //arrange buzzer sound level
+ 135              		.loc 1 148 0
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 6
+
+
+ 136 0034 1E21     		movs	r1, #30
+ 137 0036 E06B     		ldr	r0, [r4, #60]
+ 138 0038 FFF7FEFF 		bl	devIoPut
+ 139              	.LVL17:
+ 149:app/process_ui.c ****     //allLedsOnOff(process, TRUE);
+ 150:app/process_ui.c ****     //BUZZER_BEEP(melodyArcelik);                    //starUp Melody
+ 151:app/process_ui.c ****     timerEventStart(&params->stopAnimation, 2300); //animation stop timer
+ 140              		.loc 1 151 0
+ 141 003c 2000     		movs	r0, r4
+ 142 003e 1030     		adds	r0, r0, #16
+ 143 0040 0549     		ldr	r1, .L10+8
+ 144 0042 FFF7FEFF 		bl	timerEventStart
+ 145              	.LVL18:
+ 152:app/process_ui.c ****     params->lockStatus = CHILD_LOCK_ENABLE;
+ 146              		.loc 1 152 0
+ 147 0046 0122     		movs	r2, #1
+ 148 0048 3423     		movs	r3, #52
+ 149 004a E254     		strb	r2, [r4, r3]
+ 153:app/process_ui.c **** }
+ 150              		.loc 1 153 0
+ 151              		@ sp needed
+ 152              	.LVL19:
+ 153              	.LVL20:
+ 154 004c 70BD     		pop	{r4, r5, r6, pc}
+ 155              	.L11:
+ 156 004e C046     		.align	2
+ 157              	.L10:
+ 158 0050 00000000 		.word	processUiHandler
+ 159 0054 00000000 		.word	processUiThread
+ 160 0058 FC080000 		.word	2300
+ 161              		.cfi_endproc
+ 162              	.LFE44:
+ 163              		.size	processUiInit, .-processUiInit
+ 164              		.section	.text.processUiDeinit,"ax",%progbits
+ 165              		.align	2
+ 166              		.global	processUiDeinit
+ 167              		.code	16
+ 168              		.thumb_func
+ 169              		.type	processUiDeinit, %function
+ 170              	processUiDeinit:
+ 171              	.LFB45:
+ 154:app/process_ui.c **** 
+ 155:app/process_ui.c **** /// @brief  Deinitialization function of processUi
+ 156:app/process_ui.c **** PROCESS_DEINIT_PROTO(processUiDeinit)
+ 157:app/process_ui.c **** {
+ 172              		.loc 1 157 0
+ 173              		.cfi_startproc
+ 174              		@ args = 0, pretend = 0, frame = 0
+ 175              		@ frame_needed = 0, uses_anonymous_args = 0
+ 176              	.LVL21:
+ 177 0000 70B5     		push	{r4, r5, r6, lr}
+ 178              		.cfi_def_cfa_offset 16
+ 179              		.cfi_offset 4, -16
+ 180              		.cfi_offset 5, -12
+ 181              		.cfi_offset 6, -8
+ 182              		.cfi_offset 14, -4
+ 183 0002 0400     		movs	r4, r0
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 7
+
+
+ 184              	.LVL22:
+ 158:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 159:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 160:app/process_ui.c **** 
+ 161:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 162:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 163:app/process_ui.c **** 
+ 164:app/process_ui.c ****     PROCESS_STATE_CHANGE(process, NULL);
+ 185              		.loc 1 164 0
+ 186 0004 0369     		ldr	r3, [r0, #16]
+ 187 0006 4361     		str	r3, [r0, #20]
+ 188 0008 0025     		movs	r5, #0
+ 189 000a 0561     		str	r5, [r0, #16]
+ 165:app/process_ui.c ****     threadStop(process, process->threadFunction);
+ 190              		.loc 1 165 0
+ 191 000c 816A     		ldr	r1, [r0, #40]
+ 192 000e FFF7FEFF 		bl	threadStop
+ 193              	.LVL23:
+ 166:app/process_ui.c ****     process->initialized = 0; // If process needs other checks, clear this another time
+ 194              		.loc 1 166 0
+ 195 0012 4523     		movs	r3, #69
+ 196 0014 E554     		strb	r5, [r4, r3]
+ 167:app/process_ui.c **** }
+ 197              		.loc 1 167 0
+ 198              		@ sp needed
+ 199              	.LVL24:
+ 200 0016 70BD     		pop	{r4, r5, r6, pc}
+ 201              		.cfi_endproc
+ 202              	.LFE45:
+ 203              		.size	processUiDeinit, .-processUiDeinit
+ 204              		.section	.text.ledGuiHandler,"ax",%progbits
+ 205              		.align	2
+ 206              		.global	ledGuiHandler
+ 207              		.code	16
+ 208              		.thumb_func
+ 209              		.type	ledGuiHandler, %function
+ 210              	ledGuiHandler:
+ 211              	.LFB48:
+ 168:app/process_ui.c **** 
+ 169:app/process_ui.c **** 
+ 170:app/process_ui.c **** /// @brief  Event handler function of processUi
+ 171:app/process_ui.c **** static PROCESS_HANDLER_PROTO(processUiHandler)
+ 172:app/process_ui.c **** {
+ 173:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 174:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 175:app/process_ui.c **** 
+ 176:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 177:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 178:app/process_ui.c ****     
+ 179:app/process_ui.c **** 
+ 180:app/process_ui.c ****     if(eventCurrent.event == p46Pressed){
+ 181:app/process_ui.c ****         ledGuiHandler(process, eLedP43, TRUE);
+ 182:app/process_ui.c ****     }else{
+ 183:app/process_ui.c ****         ledGuiHandler(process, eLedP43, FALSE);
+ 184:app/process_ui.c ****     }
+ 185:app/process_ui.c ****     
+ 186:app/process_ui.c ****     if(eventCurrent.event == p70Pressed){
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 8
+
+
+ 187:app/process_ui.c ****         ledGuiHandler(process, eLedP44, TRUE);
+ 188:app/process_ui.c ****     }else{
+ 189:app/process_ui.c ****         ledGuiHandler(process, eLedP44, FALSE);
+ 190:app/process_ui.c ****     }
+ 191:app/process_ui.c ****     
+ 192:app/process_ui.c ****     if(eventCurrent.event == p71Pressed){
+ 193:app/process_ui.c ****         ledGuiHandler(process, eLedP45, TRUE);
+ 194:app/process_ui.c ****     }else{
+ 195:app/process_ui.c ****         ledGuiHandler(process, eLedP45, FALSE);
+ 196:app/process_ui.c ****     }
+ 197:app/process_ui.c **** }
+ 198:app/process_ui.c **** 
+ 199:app/process_ui.c **** static void guiDefaultHandler(tsProcess *process)
+ 200:app/process_ui.c **** {
+ 201:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 202:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 203:app/process_ui.c **** 
+ 204:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 205:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 206:app/process_ui.c **** 
+ 207:app/process_ui.c **** 
+ 208:app/process_ui.c ****     /*switch (eventCurrent.event)
+ 209:app/process_ui.c ****     {
+ 210:app/process_ui.c ****     case eGuiGetUi: // gather ui data from DEVs
+ 211:app/process_ui.c ****     {
+ 212:app/process_ui.c ****         encoderStat = devIoGet(params->encoder);
+ 213:app/process_ui.c **** 
+ 214:app/process_ui.c ****         if (encoderStat ^ encoderStatPrev)
+ 215:app/process_ui.c ****         {
+ 216:app/process_ui.c ****             if ((encoderStat) > (encoderStatPrev)) //clockWise
+ 217:app/process_ui.c ****             {
+ 218:app/process_ui.c ****                 eventPost(process->enumeration, eGuiEncoderCW, NULL, 0);
+ 219:app/process_ui.c ****             }
+ 220:app/process_ui.c ****             else // counterClockWise
+ 221:app/process_ui.c ****             {
+ 222:app/process_ui.c ****                 eventPost(process->enumeration, eGuiEncoderCCW, NULL, 0);
+ 223:app/process_ui.c ****             }
+ 224:app/process_ui.c ****         }
+ 225:app/process_ui.c ****         encoderStatPrev = encoderStat;
+ 226:app/process_ui.c ****         timerEventStart(&params->getUiData, 100);
+ 227:app/process_ui.c ****     }
+ 228:app/process_ui.c ****     break;
+ 229:app/process_ui.c **** 
+ 230:app/process_ui.c ****     case p46Pressed:
+ 231:app/process_ui.c ****     {
+ 232:app/process_ui.c ****         ledGuiHandler(process, eLedP43, TRUE);
+ 233:app/process_ui.c ****         BUZZER_BEEP(melodyPres);
+ 234:app/process_ui.c ****     }
+ 235:app/process_ui.c ****     break;
+ 236:app/process_ui.c **** 
+ 237:app/process_ui.c ****     case p46Released:
+ 238:app/process_ui.c ****     {
+ 239:app/process_ui.c ****         ledGuiHandler(process, eLedP43, FALSE);
+ 240:app/process_ui.c ****         BUZZER_BEEP(melodyRelease);
+ 241:app/process_ui.c ****     }
+ 242:app/process_ui.c ****     break;
+ 243:app/process_ui.c **** 
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 9
+
+
+ 244:app/process_ui.c ****     case p70Pressed:
+ 245:app/process_ui.c ****     {
+ 246:app/process_ui.c ****         buttonMapper(process, p70PressedShort, BUTON_SHORT_PRESS_DURATION, &guiButonStatus.p70);
+ 247:app/process_ui.c ****     }
+ 248:app/process_ui.c ****     break;
+ 249:app/process_ui.c **** 
+ 250:app/process_ui.c ****     case p70Released:
+ 251:app/process_ui.c ****     {
+ 252:app/process_ui.c ****         guiButonStatus.p70 = FALSE;
+ 253:app/process_ui.c ****     }
+ 254:app/process_ui.c ****     break;
+ 255:app/process_ui.c **** 
+ 256:app/process_ui.c ****     case p71Pressed:
+ 257:app/process_ui.c ****     {
+ 258:app/process_ui.c ****         buttonMapper(process, p71PressedShort, BUTON_SHORT_PRESS_DURATION, &guiButonStatus.p71);
+ 259:app/process_ui.c ****     }
+ 260:app/process_ui.c ****     break;
+ 261:app/process_ui.c **** 
+ 262:app/process_ui.c ****     case p71Released:
+ 263:app/process_ui.c ****     {
+ 264:app/process_ui.c ****         guiButonStatus.p71 = FALSE;
+ 265:app/process_ui.c ****     }
+ 266:app/process_ui.c ****     break;
+ 267:app/process_ui.c **** 
+ 268:app/process_ui.c ****     default:
+ 269:app/process_ui.c ****         break;
+ 270:app/process_ui.c ****     }*/
+ 271:app/process_ui.c **** }
+ 272:app/process_ui.c **** 
+ 273:app/process_ui.c **** void ledGuiHandler(tsProcess *process, teLeds led, uint8 onOff)
+ 274:app/process_ui.c **** {
+ 212              		.loc 1 274 0
+ 213              		.cfi_startproc
+ 214              		@ args = 0, pretend = 0, frame = 0
+ 215              		@ frame_needed = 0, uses_anonymous_args = 0
+ 216              	.LVL25:
+ 217 0000 10B5     		push	{r4, lr}
+ 218              		.cfi_def_cfa_offset 8
+ 219              		.cfi_offset 4, -8
+ 220              		.cfi_offset 14, -4
+ 275:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 221              		.loc 1 275 0
+ 222 0002 8369     		ldr	r3, [r0, #24]
+ 223              	.LVL26:
+ 276:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 277:app/process_ui.c **** 
+ 278:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 279:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 280:app/process_ui.c **** 
+ 281:app/process_ui.c ****     if (onOff)
+ 224              		.loc 1 281 0
+ 225 0004 002A     		cmp	r2, #0
+ 226 0006 05D0     		beq	.L14
+ 282:app/process_ui.c ****     {
+ 283:app/process_ui.c ****         params->ledState |= BIT(led); //turn on
+ 227              		.loc 1 283 0
+ 228 0008 0122     		movs	r2, #1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 10
+
+
+ 229              	.LVL27:
+ 230 000a 8A40     		lsls	r2, r2, r1
+ 231 000c 196B     		ldr	r1, [r3, #48]
+ 232              	.LVL28:
+ 233 000e 0A43     		orrs	r2, r1
+ 234 0010 1A63     		str	r2, [r3, #48]
+ 235              	.LVL29:
+ 236 0012 04E0     		b	.L15
+ 237              	.LVL30:
+ 238              	.L14:
+ 284:app/process_ui.c ****     }
+ 285:app/process_ui.c ****     else
+ 286:app/process_ui.c ****     {
+ 287:app/process_ui.c ****         params->ledState &= ~BIT(led); //turn off
+ 239              		.loc 1 287 0
+ 240 0014 0122     		movs	r2, #1
+ 241              	.LVL31:
+ 242 0016 8A40     		lsls	r2, r2, r1
+ 243 0018 196B     		ldr	r1, [r3, #48]
+ 244              	.LVL32:
+ 245 001a 9143     		bics	r1, r2
+ 246 001c 1963     		str	r1, [r3, #48]
+ 247              	.LVL33:
+ 248              	.L15:
+ 288:app/process_ui.c ****     }
+ 289:app/process_ui.c **** 
+ 290:app/process_ui.c ****     devIoPut(params->leds, params->ledState);
+ 249              		.loc 1 290 0
+ 250 001e 196B     		ldr	r1, [r3, #48]
+ 251 0020 986B     		ldr	r0, [r3, #56]
+ 252              	.LVL34:
+ 253 0022 FFF7FEFF 		bl	devIoPut
+ 254              	.LVL35:
+ 291:app/process_ui.c **** }
+ 255              		.loc 1 291 0
+ 256              		@ sp needed
+ 257 0026 10BD     		pop	{r4, pc}
+ 258              		.cfi_endproc
+ 259              	.LFE48:
+ 260              		.size	ledGuiHandler, .-ledGuiHandler
+ 261              		.section	.text.processUiHandler,"ax",%progbits
+ 262              		.align	2
+ 263              		.code	16
+ 264              		.thumb_func
+ 265              		.type	processUiHandler, %function
+ 266              	processUiHandler:
+ 267              	.LFB46:
+ 172:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 268              		.loc 1 172 0
+ 269              		.cfi_startproc
+ 270              		@ args = 0, pretend = 0, frame = 0
+ 271              		@ frame_needed = 0, uses_anonymous_args = 0
+ 272              	.LVL36:
+ 273 0000 10B5     		push	{r4, lr}
+ 274              		.cfi_def_cfa_offset 8
+ 275              		.cfi_offset 4, -8
+ 276              		.cfi_offset 14, -4
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 11
+
+
+ 277 0002 0400     		movs	r4, r0
+ 278              	.LVL37:
+ 180:app/process_ui.c ****         ledGuiHandler(process, eLedP43, TRUE);
+ 279              		.loc 1 180 0
+ 280 0004 154B     		ldr	r3, .L23
+ 281 0006 9B78     		ldrb	r3, [r3, #2]
+ 282 0008 052B     		cmp	r3, #5
+ 283 000a 04D1     		bne	.L17
+ 181:app/process_ui.c ****     }else{
+ 284              		.loc 1 181 0
+ 285 000c 0122     		movs	r2, #1
+ 286 000e 0021     		movs	r1, #0
+ 287 0010 FFF7FEFF 		bl	ledGuiHandler
+ 288              	.LVL38:
+ 289 0014 03E0     		b	.L18
+ 290              	.LVL39:
+ 291              	.L17:
+ 183:app/process_ui.c ****     }
+ 292              		.loc 1 183 0
+ 293 0016 0022     		movs	r2, #0
+ 294 0018 0021     		movs	r1, #0
+ 295 001a FFF7FEFF 		bl	ledGuiHandler
+ 296              	.LVL40:
+ 297              	.L18:
+ 186:app/process_ui.c ****         ledGuiHandler(process, eLedP44, TRUE);
+ 298              		.loc 1 186 0
+ 299 001e 0F4B     		ldr	r3, .L23
+ 300 0020 9B78     		ldrb	r3, [r3, #2]
+ 301 0022 072B     		cmp	r3, #7
+ 302 0024 05D1     		bne	.L19
+ 187:app/process_ui.c ****     }else{
+ 303              		.loc 1 187 0
+ 304 0026 0122     		movs	r2, #1
+ 305 0028 0121     		movs	r1, #1
+ 306 002a 2000     		movs	r0, r4
+ 307 002c FFF7FEFF 		bl	ledGuiHandler
+ 308              	.LVL41:
+ 309 0030 04E0     		b	.L20
+ 310              	.L19:
+ 189:app/process_ui.c ****     }
+ 311              		.loc 1 189 0
+ 312 0032 0022     		movs	r2, #0
+ 313 0034 0121     		movs	r1, #1
+ 314 0036 2000     		movs	r0, r4
+ 315 0038 FFF7FEFF 		bl	ledGuiHandler
+ 316              	.LVL42:
+ 317              	.L20:
+ 192:app/process_ui.c ****         ledGuiHandler(process, eLedP45, TRUE);
+ 318              		.loc 1 192 0
+ 319 003c 074B     		ldr	r3, .L23
+ 320 003e 9B78     		ldrb	r3, [r3, #2]
+ 321 0040 0B2B     		cmp	r3, #11
+ 322 0042 05D1     		bne	.L21
+ 193:app/process_ui.c ****     }else{
+ 323              		.loc 1 193 0
+ 324 0044 0122     		movs	r2, #1
+ 325 0046 0221     		movs	r1, #2
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 12
+
+
+ 326 0048 2000     		movs	r0, r4
+ 327 004a FFF7FEFF 		bl	ledGuiHandler
+ 328              	.LVL43:
+ 329 004e 04E0     		b	.L16
+ 330              	.L21:
+ 195:app/process_ui.c ****     }
+ 331              		.loc 1 195 0
+ 332 0050 0022     		movs	r2, #0
+ 333 0052 0221     		movs	r1, #2
+ 334 0054 2000     		movs	r0, r4
+ 335 0056 FFF7FEFF 		bl	ledGuiHandler
+ 336              	.LVL44:
+ 337              	.L16:
+ 197:app/process_ui.c **** 
+ 338              		.loc 1 197 0
+ 339              		@ sp needed
+ 340              	.LVL45:
+ 341 005a 10BD     		pop	{r4, pc}
+ 342              	.L24:
+ 343              		.align	2
+ 344              	.L23:
+ 345 005c 00000000 		.word	eventCurrent
+ 346              		.cfi_endproc
+ 347              	.LFE46:
+ 348              		.size	processUiHandler, .-processUiHandler
+ 349              		.section	.text.allLedsOnOff,"ax",%progbits
+ 350              		.align	2
+ 351              		.global	allLedsOnOff
+ 352              		.code	16
+ 353              		.thumb_func
+ 354              		.type	allLedsOnOff, %function
+ 355              	allLedsOnOff:
+ 356              	.LFB49:
+ 292:app/process_ui.c **** 
+ 293:app/process_ui.c **** void allLedsOnOff(tsProcess *process, uint8 onOff)
+ 294:app/process_ui.c **** {
+ 357              		.loc 1 294 0
+ 358              		.cfi_startproc
+ 359              		@ args = 0, pretend = 0, frame = 0
+ 360              		@ frame_needed = 0, uses_anonymous_args = 0
+ 361              	.LVL46:
+ 362 0000 70B5     		push	{r4, r5, r6, lr}
+ 363              		.cfi_def_cfa_offset 16
+ 364              		.cfi_offset 4, -16
+ 365              		.cfi_offset 5, -12
+ 366              		.cfi_offset 6, -8
+ 367              		.cfi_offset 14, -4
+ 368 0002 0600     		movs	r6, r0
+ 369 0004 0D00     		movs	r5, r1
+ 370              	.LVL47:
+ 295:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 296:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 297:app/process_ui.c **** 
+ 298:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 299:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 300:app/process_ui.c ****     uint8 idx;
+ 301:app/process_ui.c ****     for (idx = eLedP43; idx <= eLedP45; idx++)
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 13
+
+
+ 371              		.loc 1 301 0
+ 372 0006 0024     		movs	r4, #0
+ 373 0008 06E0     		b	.L26
+ 374              	.LVL48:
+ 375              	.L27:
+ 302:app/process_ui.c ****     {
+ 303:app/process_ui.c ****         ledGuiHandler(process, idx, onOff);
+ 376              		.loc 1 303 0 discriminator 3
+ 377 000a 2A00     		movs	r2, r5
+ 378 000c 2100     		movs	r1, r4
+ 379 000e 3000     		movs	r0, r6
+ 380 0010 FFF7FEFF 		bl	ledGuiHandler
+ 381              	.LVL49:
+ 301:app/process_ui.c ****     {
+ 382              		.loc 1 301 0 discriminator 3
+ 383 0014 0134     		adds	r4, r4, #1
+ 384              	.LVL50:
+ 385 0016 E4B2     		uxtb	r4, r4
+ 386              	.LVL51:
+ 387              	.L26:
+ 301:app/process_ui.c ****     {
+ 388              		.loc 1 301 0 is_stmt 0 discriminator 1
+ 389 0018 022C     		cmp	r4, #2
+ 390 001a F6D9     		bls	.L27
+ 304:app/process_ui.c ****     }
+ 305:app/process_ui.c **** }
+ 391              		.loc 1 305 0 is_stmt 1
+ 392              		@ sp needed
+ 393              	.LVL52:
+ 394              	.LVL53:
+ 395 001c 70BD     		pop	{r4, r5, r6, pc}
+ 396              		.cfi_endproc
+ 397              	.LFE49:
+ 398              		.size	allLedsOnOff, .-allLedsOnOff
+ 399 001e C046     		.section	.text.buttonMapper,"ax",%progbits
+ 400              		.align	2
+ 401              		.global	buttonMapper
+ 402              		.code	16
+ 403              		.thumb_func
+ 404              		.type	buttonMapper, %function
+ 405              	buttonMapper:
+ 406              	.LFB50:
+ 306:app/process_ui.c **** 
+ 307:app/process_ui.c **** void buttonMapper(tsProcess *process, teProcessUiEvents event, uint16_t pressDuration, teBool *buto
+ 308:app/process_ui.c **** {
+ 407              		.loc 1 308 0
+ 408              		.cfi_startproc
+ 409              		@ args = 0, pretend = 0, frame = 16
+ 410              		@ frame_needed = 0, uses_anonymous_args = 0
+ 411              	.LVL54:
+ 412 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 413              		.cfi_def_cfa_offset 20
+ 414              		.cfi_offset 4, -20
+ 415              		.cfi_offset 5, -16
+ 416              		.cfi_offset 6, -12
+ 417              		.cfi_offset 7, -8
+ 418              		.cfi_offset 14, -4
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 14
+
+
+ 419 0002 85B0     		sub	sp, sp, #20
+ 420              		.cfi_def_cfa_offset 40
+ 421 0004 0191     		str	r1, [sp, #4]
+ 422 0006 1500     		movs	r5, r2
+ 423 0008 1F00     		movs	r7, r3
+ 309:app/process_ui.c ****     tsProcessUiParams *params = process->parameters;
+ 424              		.loc 1 309 0
+ 425 000a 8669     		ldr	r6, [r0, #24]
+ 426              	.LVL55:
+ 310:app/process_ui.c ****     const tsProcessUiConsts *consts = process->constants;
+ 311:app/process_ui.c **** 
+ 312:app/process_ui.c ****     UNUSED(params); // REMOVE IF USED
+ 313:app/process_ui.c ****     UNUSED(consts); // REMOVE IF USED
+ 314:app/process_ui.c **** 
+ 315:app/process_ui.c ****     uint16_t duration;
+ 316:app/process_ui.c ****     memcpy(&duration, &eventData, sizeof(uint16_t));
+ 427              		.loc 1 316 0
+ 428 000c 02AB     		add	r3, sp, #8
+ 429              	.LVL56:
+ 430 000e 9C1D     		adds	r4, r3, #6
+ 431 0010 0222     		movs	r2, #2
+ 432              	.LVL57:
+ 433 0012 0F49     		ldr	r1, .L31
+ 434              	.LVL58:
+ 435 0014 2000     		movs	r0, r4
+ 436              	.LVL59:
+ 437 0016 FFF7FEFF 		bl	memcpy
+ 438              	.LVL60:
+ 317:app/process_ui.c **** 
+ 318:app/process_ui.c ****     if ((duration >= pressDuration) && (!*butonStatus))
+ 439              		.loc 1 318 0
+ 440 001a 2388     		ldrh	r3, [r4]
+ 441 001c AB42     		cmp	r3, r5
+ 442 001e 14D3     		bcc	.L28
+ 443              		.loc 1 318 0 is_stmt 0 discriminator 1
+ 444 0020 3B78     		ldrb	r3, [r7]
+ 445 0022 002B     		cmp	r3, #0
+ 446 0024 11D1     		bne	.L28
+ 319:app/process_ui.c ****     {
+ 320:app/process_ui.c ****         *butonStatus = TRUE;
+ 447              		.loc 1 320 0 is_stmt 1
+ 448 0026 0133     		adds	r3, r3, #1
+ 449 0028 3B70     		strb	r3, [r7]
+ 321:app/process_ui.c ****         if (!params->lockStatus)
+ 450              		.loc 1 321 0
+ 451 002a 3333     		adds	r3, r3, #51
+ 452 002c F35C     		ldrb	r3, [r6, r3]
+ 453 002e 002B     		cmp	r3, #0
+ 454 0030 07D1     		bne	.L30
+ 322:app/process_ui.c ****         {
+ 323:app/process_ui.c ****             eventPost(eventCurrent.destination, event, NULL, 0);
+ 455              		.loc 1 323 0
+ 456 0032 084B     		ldr	r3, .L31+4
+ 457 0034 5878     		ldrb	r0, [r3, #1]
+ 458 0036 0023     		movs	r3, #0
+ 459 0038 0022     		movs	r2, #0
+ 460 003a 0199     		ldr	r1, [sp, #4]
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 15
+
+
+ 461 003c FFF7FEFF 		bl	eventPost
+ 462              	.LVL61:
+ 463 0040 03E0     		b	.L28
+ 464              	.L30:
+ 324:app/process_ui.c ****         }
+ 325:app/process_ui.c ****         else
+ 326:app/process_ui.c ****         {
+ 327:app/process_ui.c ****             BUZZER_BEEP(melodyKeyWarning);
+ 465              		.loc 1 327 0
+ 466 0042 306C     		ldr	r0, [r6, #64]
+ 467 0044 0449     		ldr	r1, .L31+8
+ 468 0046 FFF7FEFF 		bl	devIoPut
+ 469              	.LVL62:
+ 470              	.L28:
+ 328:app/process_ui.c ****         }
+ 329:app/process_ui.c ****     }
+ 330:app/process_ui.c **** }
+ 471              		.loc 1 330 0
+ 472 004a 05B0     		add	sp, sp, #20
+ 473              		@ sp needed
+ 474              	.LVL63:
+ 475              	.LVL64:
+ 476 004c F0BD     		pop	{r4, r5, r6, r7, pc}
+ 477              	.L32:
+ 478 004e C046     		.align	2
+ 479              	.L31:
+ 480 0050 00000000 		.word	eventData
+ 481 0054 00000000 		.word	eventCurrent
+ 482 0058 00000000 		.word	.LANCHOR0
+ 483              		.cfi_endproc
+ 484              	.LFE50:
+ 485              		.size	buttonMapper, .-buttonMapper
+ 486              		.global	melodyLock
+ 487              		.global	melodyKeyWarning
+ 488              		.global	melodyRelease
+ 489              		.global	melodyPres
+ 490              		.global	melodyArcelik
+ 491              		.global	encoderStatPrev
+ 492              		.global	encoderStat
+ 493              		.global	sevSegCounter
+ 494              		.comm	guiButonStatus,3,4
+ 495              		.section	.rodata
+ 496              		.align	2
+ 497              		.set	.LANCHOR0,. + 0
+ 498              		.type	melodyKeyWarning, %object
+ 499              		.size	melodyKeyWarning, 32
+ 500              	melodyKeyWarning:
+ 501 0000 A00F0000 		.word	4000
+ 502 0004 96000000 		.word	150
+ 503 0008 B80B0000 		.word	3000
+ 504 000c C8000000 		.word	200
+ 505 0010 A00F0000 		.word	4000
+ 506 0014 96000000 		.word	150
+ 507 0018 00000000 		.word	0
+ 508 001c 00000000 		.word	0
+ 509              		.type	melodyLock, %object
+ 510              		.size	melodyLock, 32
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 16
+
+
+ 511              	melodyLock:
+ 512 0020 C00D0000 		.word	3520
+ 513 0024 96000000 		.word	150
+ 514 0028 6F0F0000 		.word	3951
+ 515 002c C8000000 		.word	200
+ 516 0030 2D080000 		.word	2093
+ 517 0034 96000000 		.word	150
+ 518 0038 00000000 		.word	0
+ 519 003c 00000000 		.word	0
+ 520              		.type	melodyRelease, %object
+ 521              		.size	melodyRelease, 16
+ 522              	melodyRelease:
+ 523 0040 3F0C0000 		.word	3135
+ 524 0044 96000000 		.word	150
+ 525 0048 00000000 		.word	0
+ 526 004c 00000000 		.word	0
+ 527              		.type	melodyPres, %object
+ 528              		.size	melodyPres, 16
+ 529              	melodyPres:
+ 530 0050 C00D0000 		.word	3520
+ 531 0054 96000000 		.word	150
+ 532 0058 00000000 		.word	0
+ 533 005c 00000000 		.word	0
+ 534              		.type	melodyArcelik, %object
+ 535              		.size	melodyArcelik, 104
+ 536              	melodyArcelik:
+ 537 0060 26050000 		.word	1318
+ 538 0064 FC000000 		.word	252
+ 539 0068 00000000 		.word	0
+ 540 006c 24000000 		.word	36
+ 541 0070 26050000 		.word	1318
+ 542 0074 FC000000 		.word	252
+ 543 0078 00000000 		.word	0
+ 544 007c 24000000 		.word	36
+ 545 0080 26050000 		.word	1318
+ 546 0084 FC000000 		.word	252
+ 547 0088 00000000 		.word	0
+ 548 008c 24000000 		.word	36
+ 549 0090 00000000 		.word	0
+ 550 0094 20010000 		.word	288
+ 551 0098 26050000 		.word	1318
+ 552 009c FC000000 		.word	252
+ 553 00a0 00000000 		.word	0
+ 554 00a4 24000000 		.word	36
+ 555 00a8 E0060000 		.word	1760
+ 556 00ac 1C020000 		.word	540
+ 557 00b0 00000000 		.word	0
+ 558 00b4 24000000 		.word	36
+ 559 00b8 00000000 		.word	0
+ 560 00bc 20010000 		.word	288
+ 561 00c0 00000000 		.word	0
+ 562 00c4 00000000 		.word	0
+ 563              		.bss
+ 564              		.type	encoderStatPrev, %object
+ 565              		.size	encoderStatPrev, 1
+ 566              	encoderStatPrev:
+ 567 0000 00       		.space	1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 17
+
+
+ 568              		.type	encoderStat, %object
+ 569              		.size	encoderStat, 1
+ 570              	encoderStat:
+ 571 0001 00       		.space	1
+ 572              		.type	sevSegCounter, %object
+ 573              		.size	sevSegCounter, 1
+ 574              	sevSegCounter:
+ 575 0002 00       		.space	1
+ 576              		.text
+ 577              	.Letext0:
+ 578              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 579              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 580              		.file 4 ".\\RCOS/libs/libs.h"
+ 581              		.file 5 "Generated_Source\\PSoC4/cytypes.h"
+ 582              		.file 6 ".\\RCOS/libs/list_dl.h"
+ 583              		.file 7 ".\\RCOS/dev/dev.h"
+ 584              		.file 8 ".\\RCOS/core/core.h"
+ 585              		.file 9 ".\\RCOS/dev\\pattern.h"
+ 586              		.file 10 "app\\process_ui.h"
+ 587              		.file 11 ".\\RCOS/libs/bits.h"
+ 588              		.section	.debug_info,"",%progbits
+ 589              	.Ldebug_info0:
+ 590 0000 160C0000 		.4byte	0xc16
+ 591 0004 0400     		.2byte	0x4
+ 592 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 593 000a 04       		.byte	0x4
+ 594 000b 01       		.uleb128 0x1
+ 595 000c 22060000 		.4byte	.LASF137
+ 596 0010 0C       		.byte	0xc
+ 597 0011 13050000 		.4byte	.LASF138
+ 598 0015 37050000 		.4byte	.LASF139
+ 599 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 600 001d 00000000 		.4byte	0
+ 601 0021 00000000 		.4byte	.Ldebug_line0
+ 602 0025 02       		.uleb128 0x2
+ 603 0026 01       		.byte	0x1
+ 604 0027 06       		.byte	0x6
+ 605 0028 0B010000 		.4byte	.LASF0
+ 606 002c 03       		.uleb128 0x3
+ 607 002d 46000000 		.4byte	.LASF2
+ 608 0031 02       		.byte	0x2
+ 609 0032 1D       		.byte	0x1d
+ 610 0033 37000000 		.4byte	0x37
+ 611 0037 02       		.uleb128 0x2
+ 612 0038 01       		.byte	0x1
+ 613 0039 08       		.byte	0x8
+ 614 003a 0E040000 		.4byte	.LASF1
+ 615 003e 03       		.uleb128 0x3
+ 616 003f BA010000 		.4byte	.LASF3
+ 617 0043 02       		.byte	0x2
+ 618 0044 29       		.byte	0x29
+ 619 0045 49000000 		.4byte	0x49
+ 620 0049 02       		.uleb128 0x2
+ 621 004a 02       		.byte	0x2
+ 622 004b 05       		.byte	0x5
+ 623 004c 39040000 		.4byte	.LASF4
+ 624 0050 03       		.uleb128 0x3
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 18
+
+
+ 625 0051 D6040000 		.4byte	.LASF5
+ 626 0055 02       		.byte	0x2
+ 627 0056 2B       		.byte	0x2b
+ 628 0057 5B000000 		.4byte	0x5b
+ 629 005b 02       		.uleb128 0x2
+ 630 005c 02       		.byte	0x2
+ 631 005d 07       		.byte	0x7
+ 632 005e 6C020000 		.4byte	.LASF6
+ 633 0062 02       		.uleb128 0x2
+ 634 0063 04       		.byte	0x4
+ 635 0064 05       		.byte	0x5
+ 636 0065 51010000 		.4byte	.LASF7
+ 637 0069 03       		.uleb128 0x3
+ 638 006a AF010000 		.4byte	.LASF8
+ 639 006e 02       		.byte	0x2
+ 640 006f 41       		.byte	0x41
+ 641 0070 74000000 		.4byte	0x74
+ 642 0074 02       		.uleb128 0x2
+ 643 0075 04       		.byte	0x4
+ 644 0076 07       		.byte	0x7
+ 645 0077 34020000 		.4byte	.LASF9
+ 646 007b 02       		.uleb128 0x2
+ 647 007c 08       		.byte	0x8
+ 648 007d 05       		.byte	0x5
+ 649 007e FD000000 		.4byte	.LASF10
+ 650 0082 02       		.uleb128 0x2
+ 651 0083 08       		.byte	0x8
+ 652 0084 07       		.byte	0x7
+ 653 0085 17010000 		.4byte	.LASF11
+ 654 0089 04       		.uleb128 0x4
+ 655 008a 04       		.byte	0x4
+ 656 008b 05       		.byte	0x5
+ 657 008c 696E7400 		.ascii	"int\000"
+ 658 0090 02       		.uleb128 0x2
+ 659 0091 04       		.byte	0x4
+ 660 0092 07       		.byte	0x7
+ 661 0093 67010000 		.4byte	.LASF12
+ 662 0097 03       		.uleb128 0x3
+ 663 0098 C4050000 		.4byte	.LASF13
+ 664 009c 03       		.byte	0x3
+ 665 009d 18       		.byte	0x18
+ 666 009e 2C000000 		.4byte	0x2c
+ 667 00a2 03       		.uleb128 0x3
+ 668 00a3 E7000000 		.4byte	.LASF14
+ 669 00a7 03       		.byte	0x3
+ 670 00a8 20       		.byte	0x20
+ 671 00a9 3E000000 		.4byte	0x3e
+ 672 00ad 03       		.uleb128 0x3
+ 673 00ae 11020000 		.4byte	.LASF15
+ 674 00b2 03       		.byte	0x3
+ 675 00b3 24       		.byte	0x24
+ 676 00b4 50000000 		.4byte	0x50
+ 677 00b8 03       		.uleb128 0x3
+ 678 00b9 7C050000 		.4byte	.LASF16
+ 679 00bd 03       		.byte	0x3
+ 680 00be 30       		.byte	0x30
+ 681 00bf 69000000 		.4byte	0x69
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 19
+
+
+ 682 00c3 02       		.uleb128 0x2
+ 683 00c4 08       		.byte	0x8
+ 684 00c5 04       		.byte	0x4
+ 685 00c6 A4040000 		.4byte	.LASF17
+ 686 00ca 05       		.uleb128 0x5
+ 687 00cb 01       		.byte	0x1
+ 688 00cc 37000000 		.4byte	0x37
+ 689 00d0 04       		.byte	0x4
+ 690 00d1 19       		.byte	0x19
+ 691 00d2 E3000000 		.4byte	0xe3
+ 692 00d6 06       		.uleb128 0x6
+ 693 00d7 63040000 		.4byte	.LASF18
+ 694 00db 01       		.byte	0x1
+ 695 00dc 06       		.uleb128 0x6
+ 696 00dd B3030000 		.4byte	.LASF19
+ 697 00e1 00       		.byte	0
+ 698 00e2 00       		.byte	0
+ 699 00e3 03       		.uleb128 0x3
+ 700 00e4 79000000 		.4byte	.LASF20
+ 701 00e8 04       		.byte	0x4
+ 702 00e9 1C       		.byte	0x1c
+ 703 00ea CA000000 		.4byte	0xca
+ 704 00ee 02       		.uleb128 0x2
+ 705 00ef 01       		.byte	0x1
+ 706 00f0 08       		.byte	0x8
+ 707 00f1 C2040000 		.4byte	.LASF21
+ 708 00f5 07       		.uleb128 0x7
+ 709 00f6 7B010000 		.4byte	.LASF22
+ 710 00fa 05       		.byte	0x5
+ 711 00fb F701     		.2byte	0x1f7
+ 712 00fd 37000000 		.4byte	0x37
+ 713 0101 02       		.uleb128 0x2
+ 714 0102 04       		.byte	0x4
+ 715 0103 04       		.byte	0x4
+ 716 0104 A1030000 		.4byte	.LASF23
+ 717 0108 02       		.uleb128 0x2
+ 718 0109 08       		.byte	0x8
+ 719 010a 04       		.byte	0x4
+ 720 010b 92010000 		.4byte	.LASF24
+ 721 010f 02       		.uleb128 0x2
+ 722 0110 04       		.byte	0x4
+ 723 0111 07       		.byte	0x7
+ 724 0112 19030000 		.4byte	.LASF25
+ 725 0116 08       		.uleb128 0x8
+ 726 0117 04       		.byte	0x4
+ 727 0118 09       		.uleb128 0x9
+ 728 0119 04       		.byte	0x4
+ 729 011a 1E010000 		.4byte	0x11e
+ 730 011e 0A       		.uleb128 0xa
+ 731 011f 0B       		.uleb128 0xb
+ 732 0120 B7040000 		.4byte	.LASF30
+ 733 0124 08       		.byte	0x8
+ 734 0125 06       		.byte	0x6
+ 735 0126 3C       		.byte	0x3c
+ 736 0127 44010000 		.4byte	0x144
+ 737 012b 0C       		.uleb128 0xc
+ 738 012c 71040000 		.4byte	.LASF26
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 20
+
+
+ 739 0130 06       		.byte	0x6
+ 740 0131 3E       		.byte	0x3e
+ 741 0132 44010000 		.4byte	0x144
+ 742 0136 00       		.byte	0
+ 743 0137 0C       		.uleb128 0xc
+ 744 0138 06030000 		.4byte	.LASF27
+ 745 013c 06       		.byte	0x6
+ 746 013d 3F       		.byte	0x3f
+ 747 013e 44010000 		.4byte	0x144
+ 748 0142 04       		.byte	0x4
+ 749 0143 00       		.byte	0
+ 750 0144 09       		.uleb128 0x9
+ 751 0145 04       		.byte	0x4
+ 752 0146 1F010000 		.4byte	0x11f
+ 753 014a 03       		.uleb128 0x3
+ 754 014b 81010000 		.4byte	.LASF28
+ 755 014f 06       		.byte	0x6
+ 756 0150 40       		.byte	0x40
+ 757 0151 1F010000 		.4byte	0x11f
+ 758 0155 03       		.uleb128 0x3
+ 759 0156 9D020000 		.4byte	.LASF29
+ 760 015a 07       		.byte	0x7
+ 761 015b 34       		.byte	0x34
+ 762 015c 60010000 		.4byte	0x160
+ 763 0160 0B       		.uleb128 0xb
+ 764 0161 FD020000 		.4byte	.LASF31
+ 765 0165 10       		.byte	0x10
+ 766 0166 07       		.byte	0x7
+ 767 0167 4E       		.byte	0x4e
+ 768 0168 9D010000 		.4byte	0x19d
+ 769 016c 0C       		.uleb128 0xc
+ 770 016d D4000000 		.4byte	.LASF32
+ 771 0171 07       		.byte	0x7
+ 772 0172 50       		.byte	0x50
+ 773 0173 72020000 		.4byte	0x272
+ 774 0177 00       		.byte	0
+ 775 0178 0C       		.uleb128 0xc
+ 776 0179 B0000000 		.4byte	.LASF33
+ 777 017d 07       		.byte	0x7
+ 778 017e 51       		.byte	0x51
+ 779 017f 16010000 		.4byte	0x116
+ 780 0183 04       		.byte	0x4
+ 781 0184 0C       		.uleb128 0xc
+ 782 0185 09050000 		.4byte	.LASF34
+ 783 0189 07       		.byte	0x7
+ 784 018a 52       		.byte	0x52
+ 785 018b 18010000 		.4byte	0x118
+ 786 018f 08       		.byte	0x8
+ 787 0190 0D       		.uleb128 0xd
+ 788 0191 73797300 		.ascii	"sys\000"
+ 789 0195 07       		.byte	0x7
+ 790 0196 53       		.byte	0x53
+ 791 0197 7D020000 		.4byte	0x27d
+ 792 019b 0C       		.byte	0xc
+ 793 019c 00       		.byte	0
+ 794 019d 0B       		.uleb128 0xb
+ 795 019e F6030000 		.4byte	.LASF35
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 21
+
+
+ 796 01a2 10       		.byte	0x10
+ 797 01a3 07       		.byte	0x7
+ 798 01a4 40       		.byte	0x40
+ 799 01a5 DA010000 		.4byte	0x1da
+ 800 01a9 0C       		.uleb128 0xc
+ 801 01aa 57000000 		.4byte	.LASF36
+ 802 01ae 07       		.byte	0x7
+ 803 01af 42       		.byte	0x42
+ 804 01b0 F9010000 		.4byte	0x1f9
+ 805 01b4 00       		.byte	0
+ 806 01b5 0C       		.uleb128 0xc
+ 807 01b6 86040000 		.4byte	.LASF37
+ 808 01ba 07       		.byte	0x7
+ 809 01bb 43       		.byte	0x43
+ 810 01bc 0E020000 		.4byte	0x20e
+ 811 01c0 04       		.byte	0x4
+ 812 01c1 0D       		.uleb128 0xd
+ 813 01c2 67657400 		.ascii	"get\000"
+ 814 01c6 07       		.byte	0x7
+ 815 01c7 44       		.byte	0x44
+ 816 01c8 23020000 		.4byte	0x223
+ 817 01cc 08       		.byte	0x8
+ 818 01cd 0D       		.uleb128 0xd
+ 819 01ce 70757400 		.ascii	"put\000"
+ 820 01d2 07       		.byte	0x7
+ 821 01d3 45       		.byte	0x45
+ 822 01d4 3D020000 		.4byte	0x23d
+ 823 01d8 0C       		.byte	0xc
+ 824 01d9 00       		.byte	0
+ 825 01da 0E       		.uleb128 0xe
+ 826 01db 97000000 		.4byte	0x97
+ 827 01df EE010000 		.4byte	0x1ee
+ 828 01e3 0F       		.uleb128 0xf
+ 829 01e4 EE010000 		.4byte	0x1ee
+ 830 01e8 0F       		.uleb128 0xf
+ 831 01e9 18010000 		.4byte	0x118
+ 832 01ed 00       		.byte	0
+ 833 01ee 09       		.uleb128 0x9
+ 834 01ef 04       		.byte	0x4
+ 835 01f0 F4010000 		.4byte	0x1f4
+ 836 01f4 10       		.uleb128 0x10
+ 837 01f5 55010000 		.4byte	0x155
+ 838 01f9 09       		.uleb128 0x9
+ 839 01fa 04       		.byte	0x4
+ 840 01fb DA010000 		.4byte	0x1da
+ 841 01ff 0E       		.uleb128 0xe
+ 842 0200 97000000 		.4byte	0x97
+ 843 0204 0E020000 		.4byte	0x20e
+ 844 0208 0F       		.uleb128 0xf
+ 845 0209 EE010000 		.4byte	0x1ee
+ 846 020d 00       		.byte	0
+ 847 020e 09       		.uleb128 0x9
+ 848 020f 04       		.byte	0x4
+ 849 0210 FF010000 		.4byte	0x1ff
+ 850 0214 0E       		.uleb128 0xe
+ 851 0215 B8000000 		.4byte	0xb8
+ 852 0219 23020000 		.4byte	0x223
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 22
+
+
+ 853 021d 0F       		.uleb128 0xf
+ 854 021e EE010000 		.4byte	0x1ee
+ 855 0222 00       		.byte	0
+ 856 0223 09       		.uleb128 0x9
+ 857 0224 04       		.byte	0x4
+ 858 0225 14020000 		.4byte	0x214
+ 859 0229 0E       		.uleb128 0xe
+ 860 022a 97000000 		.4byte	0x97
+ 861 022e 3D020000 		.4byte	0x23d
+ 862 0232 0F       		.uleb128 0xf
+ 863 0233 EE010000 		.4byte	0x1ee
+ 864 0237 0F       		.uleb128 0xf
+ 865 0238 B8000000 		.4byte	0xb8
+ 866 023c 00       		.byte	0
+ 867 023d 09       		.uleb128 0x9
+ 868 023e 04       		.byte	0x4
+ 869 023f 29020000 		.4byte	0x229
+ 870 0243 03       		.uleb128 0x3
+ 871 0244 5A010000 		.4byte	.LASF38
+ 872 0248 07       		.byte	0x7
+ 873 0249 46       		.byte	0x46
+ 874 024a 9D010000 		.4byte	0x19d
+ 875 024e 0B       		.uleb128 0xb
+ 876 024f DA050000 		.4byte	.LASF39
+ 877 0253 01       		.byte	0x1
+ 878 0254 07       		.byte	0x7
+ 879 0255 49       		.byte	0x49
+ 880 0256 67020000 		.4byte	0x267
+ 881 025a 0C       		.uleb128 0xc
+ 882 025b FD010000 		.4byte	.LASF40
+ 883 025f 07       		.byte	0x7
+ 884 0260 4B       		.byte	0x4b
+ 885 0261 97000000 		.4byte	0x97
+ 886 0265 00       		.byte	0
+ 887 0266 00       		.byte	0
+ 888 0267 03       		.uleb128 0x3
+ 889 0268 14060000 		.4byte	.LASF41
+ 890 026c 07       		.byte	0x7
+ 891 026d 4C       		.byte	0x4c
+ 892 026e 4E020000 		.4byte	0x24e
+ 893 0272 09       		.uleb128 0x9
+ 894 0273 04       		.byte	0x4
+ 895 0274 78020000 		.4byte	0x278
+ 896 0278 10       		.uleb128 0x10
+ 897 0279 43020000 		.4byte	0x243
+ 898 027d 09       		.uleb128 0x9
+ 899 027e 04       		.byte	0x4
+ 900 027f 67020000 		.4byte	0x267
+ 901 0283 03       		.uleb128 0x3
+ 902 0284 6A030000 		.4byte	.LASF42
+ 903 0288 08       		.byte	0x8
+ 904 0289 53       		.byte	0x53
+ 905 028a 97000000 		.4byte	0x97
+ 906 028e 03       		.uleb128 0x3
+ 907 028f 58030000 		.4byte	.LASF43
+ 908 0293 08       		.byte	0x8
+ 909 0294 57       		.byte	0x57
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 23
+
+
+ 910 0295 97000000 		.4byte	0x97
+ 911 0299 11       		.uleb128 0x11
+ 912 029a 04       		.byte	0x4
+ 913 029b 08       		.byte	0x8
+ 914 029c 7A       		.byte	0x7a
+ 915 029d D2020000 		.4byte	0x2d2
+ 916 02a1 0C       		.uleb128 0xc
+ 917 02a2 50000000 		.4byte	.LASF44
+ 918 02a6 08       		.byte	0x8
+ 919 02a7 7C       		.byte	0x7c
+ 920 02a8 8E020000 		.4byte	0x28e
+ 921 02ac 00       		.byte	0
+ 922 02ad 0C       		.uleb128 0xc
+ 923 02ae DF010000 		.4byte	.LASF45
+ 924 02b2 08       		.byte	0x8
+ 925 02b3 7D       		.byte	0x7d
+ 926 02b4 8E020000 		.4byte	0x28e
+ 927 02b8 01       		.byte	0x1
+ 928 02b9 0C       		.uleb128 0xc
+ 929 02ba 66020000 		.4byte	.LASF46
+ 930 02be 08       		.byte	0x8
+ 931 02bf 7E       		.byte	0x7e
+ 932 02c0 83020000 		.4byte	0x283
+ 933 02c4 02       		.byte	0x2
+ 934 02c5 0C       		.uleb128 0xc
+ 935 02c6 B0040000 		.4byte	.LASF47
+ 936 02ca 08       		.byte	0x8
+ 937 02cb 7F       		.byte	0x7f
+ 938 02cc 97000000 		.4byte	0x97
+ 939 02d0 03       		.byte	0x3
+ 940 02d1 00       		.byte	0
+ 941 02d2 03       		.uleb128 0x3
+ 942 02d3 75030000 		.4byte	.LASF48
+ 943 02d7 08       		.byte	0x8
+ 944 02d8 80       		.byte	0x80
+ 945 02d9 99020000 		.4byte	0x299
+ 946 02dd 12       		.uleb128 0x12
+ 947 02de 10       		.byte	0x10
+ 948 02df 08       		.byte	0x8
+ 949 02e0 5201     		.2byte	0x152
+ 950 02e2 0E030000 		.4byte	0x30e
+ 951 02e6 13       		.uleb128 0x13
+ 952 02e7 5F6C6900 		.ascii	"_li\000"
+ 953 02eb 08       		.byte	0x8
+ 954 02ec 5401     		.2byte	0x154
+ 955 02ee 4A010000 		.4byte	0x14a
+ 956 02f2 00       		.byte	0
+ 957 02f3 14       		.uleb128 0x14
+ 958 02f4 24050000 		.4byte	.LASF49
+ 959 02f8 08       		.byte	0x8
+ 960 02f9 5501     		.2byte	0x155
+ 961 02fb B8000000 		.4byte	0xb8
+ 962 02ff 08       		.byte	0x8
+ 963 0300 14       		.uleb128 0x14
+ 964 0301 B4020000 		.4byte	.LASF50
+ 965 0305 08       		.byte	0x8
+ 966 0306 5601     		.2byte	0x156
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 24
+
+
+ 967 0308 D2020000 		.4byte	0x2d2
+ 968 030c 0C       		.byte	0xc
+ 969 030d 00       		.byte	0
+ 970 030e 07       		.uleb128 0x7
+ 971 030f E1040000 		.4byte	.LASF51
+ 972 0313 08       		.byte	0x8
+ 973 0314 5701     		.2byte	0x157
+ 974 0316 DD020000 		.4byte	0x2dd
+ 975 031a 07       		.uleb128 0x7
+ 976 031b A6000000 		.4byte	.LASF52
+ 977 031f 08       		.byte	0x8
+ 978 0320 8901     		.2byte	0x189
+ 979 0322 26030000 		.4byte	0x326
+ 980 0326 15       		.uleb128 0x15
+ 981 0327 D1030000 		.4byte	.LASF53
+ 982 032b 48       		.byte	0x48
+ 983 032c 08       		.byte	0x8
+ 984 032d BC02     		.2byte	0x2bc
+ 985 032f 11040000 		.4byte	0x411
+ 986 0333 13       		.uleb128 0x13
+ 987 0334 5F6C6900 		.ascii	"_li\000"
+ 988 0338 08       		.byte	0x8
+ 989 0339 BE02     		.2byte	0x2be
+ 990 033b 4A010000 		.4byte	0x14a
+ 991 033f 00       		.byte	0
+ 992 0340 14       		.uleb128 0x14
+ 993 0341 57000000 		.4byte	.LASF36
+ 994 0345 08       		.byte	0x8
+ 995 0346 BF02     		.2byte	0x2bf
+ 996 0348 48040000 		.4byte	0x448
+ 997 034c 08       		.byte	0x8
+ 998 034d 14       		.uleb128 0x14
+ 999 034e 86040000 		.4byte	.LASF37
+ 1000 0352 08       		.byte	0x8
+ 1001 0353 C002     		.2byte	0x2c0
+ 1002 0355 48040000 		.4byte	0x448
+ 1003 0359 0C       		.byte	0xc
+ 1004 035a 14       		.uleb128 0x14
+ 1005 035b C7040000 		.4byte	.LASF54
+ 1006 035f 08       		.byte	0x8
+ 1007 0360 C102     		.2byte	0x2c1
+ 1008 0362 48040000 		.4byte	0x448
+ 1009 0366 10       		.byte	0x10
+ 1010 0367 14       		.uleb128 0x14
+ 1011 0368 93050000 		.4byte	.LASF55
+ 1012 036c 08       		.byte	0x8
+ 1013 036d C202     		.2byte	0x2c2
+ 1014 036f 48040000 		.4byte	0x448
+ 1015 0373 14       		.byte	0x14
+ 1016 0374 14       		.uleb128 0x14
+ 1017 0375 B0000000 		.4byte	.LASF33
+ 1018 0379 08       		.byte	0x8
+ 1019 037a C302     		.2byte	0x2c3
+ 1020 037c 16010000 		.4byte	0x116
+ 1021 0380 18       		.byte	0x18
+ 1022 0381 14       		.uleb128 0x14
+ 1023 0382 09050000 		.4byte	.LASF34
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 25
+
+
+ 1024 0386 08       		.byte	0x8
+ 1025 0387 C402     		.2byte	0x2c4
+ 1026 0389 18010000 		.4byte	0x118
+ 1027 038d 1C       		.byte	0x1c
+ 1028 038e 14       		.uleb128 0x14
+ 1029 038f A3050000 		.4byte	.LASF56
+ 1030 0393 08       		.byte	0x8
+ 1031 0394 C502     		.2byte	0x2c5
+ 1032 0396 AD000000 		.4byte	0xad
+ 1033 039a 20       		.byte	0x20
+ 1034 039b 14       		.uleb128 0x14
+ 1035 039c 2C040000 		.4byte	.LASF57
+ 1036 03a0 08       		.byte	0x8
+ 1037 03a1 C602     		.2byte	0x2c6
+ 1038 03a3 AD000000 		.4byte	0xad
+ 1039 03a7 22       		.byte	0x22
+ 1040 03a8 14       		.uleb128 0x14
+ 1041 03a9 DC030000 		.4byte	.LASF58
+ 1042 03ad 08       		.byte	0x8
+ 1043 03ae C702     		.2byte	0x2c7
+ 1044 03b0 AD000000 		.4byte	0xad
+ 1045 03b4 24       		.byte	0x24
+ 1046 03b5 14       		.uleb128 0x14
+ 1047 03b6 B0060000 		.4byte	.LASF59
+ 1048 03ba 08       		.byte	0x8
+ 1049 03bb C802     		.2byte	0x2c8
+ 1050 03bd AD000000 		.4byte	0xad
+ 1051 03c1 26       		.byte	0x26
+ 1052 03c2 14       		.uleb128 0x14
+ 1053 03c3 BB000000 		.4byte	.LASF60
+ 1054 03c7 08       		.byte	0x8
+ 1055 03c8 C902     		.2byte	0x2c9
+ 1056 03ca 68040000 		.4byte	0x468
+ 1057 03ce 28       		.byte	0x28
+ 1058 03cf 14       		.uleb128 0x14
+ 1059 03d0 EF030000 		.4byte	.LASF61
+ 1060 03d4 08       		.byte	0x8
+ 1061 03d5 CA02     		.2byte	0x2ca
+ 1062 03d7 2B040000 		.4byte	0x42b
+ 1063 03db 2C       		.byte	0x2c
+ 1064 03dc 13       		.uleb128 0x13
+ 1065 03dd 746C6300 		.ascii	"tlc\000"
+ 1066 03e1 08       		.byte	0x8
+ 1067 03e2 CB02     		.2byte	0x2cb
+ 1068 03e4 0E030000 		.4byte	0x30e
+ 1069 03e8 30       		.byte	0x30
+ 1070 03e9 14       		.uleb128 0x14
+ 1071 03ea 98020000 		.4byte	.LASF62
+ 1072 03ee 08       		.byte	0x8
+ 1073 03ef CC02     		.2byte	0x2cc
+ 1074 03f1 B8000000 		.4byte	0xb8
+ 1075 03f5 40       		.byte	0x40
+ 1076 03f6 14       		.uleb128 0x14
+ 1077 03f7 C4010000 		.4byte	.LASF63
+ 1078 03fb 08       		.byte	0x8
+ 1079 03fc CD02     		.2byte	0x2cd
+ 1080 03fe 8E020000 		.4byte	0x28e
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 26
+
+
+ 1081 0402 44       		.byte	0x44
+ 1082 0403 14       		.uleb128 0x14
+ 1083 0404 FD010000 		.4byte	.LASF40
+ 1084 0408 08       		.byte	0x8
+ 1085 0409 CE02     		.2byte	0x2ce
+ 1086 040b 97000000 		.4byte	0x97
+ 1087 040f 45       		.byte	0x45
+ 1088 0410 00       		.byte	0
+ 1089 0411 15       		.uleb128 0x15
+ 1090 0412 BF020000 		.4byte	.LASF64
+ 1091 0416 02       		.byte	0x2
+ 1092 0417 08       		.byte	0x8
+ 1093 0418 D101     		.2byte	0x1d1
+ 1094 041a 2B040000 		.4byte	0x42b
+ 1095 041e 13       		.uleb128 0x13
+ 1096 041f 6C6300   		.ascii	"lc\000"
+ 1097 0422 08       		.byte	0x8
+ 1098 0423 D301     		.2byte	0x1d3
+ 1099 0425 A2000000 		.4byte	0xa2
+ 1100 0429 00       		.byte	0
+ 1101 042a 00       		.byte	0
+ 1102 042b 07       		.uleb128 0x7
+ 1103 042c DE000000 		.4byte	.LASF65
+ 1104 0430 08       		.byte	0x8
+ 1105 0431 D401     		.2byte	0x1d4
+ 1106 0433 11040000 		.4byte	0x411
+ 1107 0437 16       		.uleb128 0x16
+ 1108 0438 42040000 		.4byte	0x442
+ 1109 043c 0F       		.uleb128 0xf
+ 1110 043d 42040000 		.4byte	0x442
+ 1111 0441 00       		.byte	0
+ 1112 0442 09       		.uleb128 0x9
+ 1113 0443 04       		.byte	0x4
+ 1114 0444 1A030000 		.4byte	0x31a
+ 1115 0448 09       		.uleb128 0x9
+ 1116 0449 04       		.byte	0x4
+ 1117 044a 37040000 		.4byte	0x437
+ 1118 044e 0E       		.uleb128 0xe
+ 1119 044f B8000000 		.4byte	0xb8
+ 1120 0453 62040000 		.4byte	0x462
+ 1121 0457 0F       		.uleb128 0xf
+ 1122 0458 42040000 		.4byte	0x442
+ 1123 045c 0F       		.uleb128 0xf
+ 1124 045d 62040000 		.4byte	0x462
+ 1125 0461 00       		.byte	0
+ 1126 0462 09       		.uleb128 0x9
+ 1127 0463 04       		.byte	0x4
+ 1128 0464 11040000 		.4byte	0x411
+ 1129 0468 09       		.uleb128 0x9
+ 1130 0469 04       		.byte	0x4
+ 1131 046a 4E040000 		.4byte	0x44e
+ 1132 046e 11       		.uleb128 0x11
+ 1133 046f 08       		.byte	0x8
+ 1134 0470 09       		.byte	0x9
+ 1135 0471 21       		.byte	0x21
+ 1136 0472 8F040000 		.4byte	0x48f
+ 1137 0476 0C       		.uleb128 0xc
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 27
+
+
+ 1138 0477 D9010000 		.4byte	.LASF66
+ 1139 047b 09       		.byte	0x9
+ 1140 047c 23       		.byte	0x23
+ 1141 047d B8000000 		.4byte	0xb8
+ 1142 0481 00       		.byte	0
+ 1143 0482 0C       		.uleb128 0xc
+ 1144 0483 65030000 		.4byte	.LASF67
+ 1145 0487 09       		.byte	0x9
+ 1146 0488 24       		.byte	0x24
+ 1147 0489 B8000000 		.4byte	0xb8
+ 1148 048d 04       		.byte	0x4
+ 1149 048e 00       		.byte	0
+ 1150 048f 03       		.uleb128 0x3
+ 1151 0490 C0060000 		.4byte	.LASF68
+ 1152 0494 09       		.byte	0x9
+ 1153 0495 25       		.byte	0x25
+ 1154 0496 6E040000 		.4byte	0x46e
+ 1155 049a 10       		.uleb128 0x10
+ 1156 049b 8F040000 		.4byte	0x48f
+ 1157 049f 05       		.uleb128 0x5
+ 1158 04a0 01       		.byte	0x1
+ 1159 04a1 37000000 		.4byte	0x37
+ 1160 04a5 0A       		.byte	0xa
+ 1161 04a6 23       		.byte	0x23
+ 1162 04a7 06050000 		.4byte	0x506
+ 1163 04ab 06       		.uleb128 0x6
+ 1164 04ac A5010000 		.4byte	.LASF69
+ 1165 04b0 00       		.byte	0
+ 1166 04b1 06       		.uleb128 0x6
+ 1167 04b2 8F030000 		.4byte	.LASF70
+ 1168 04b6 01       		.byte	0x1
+ 1169 04b7 06       		.uleb128 0x6
+ 1170 04b8 7F020000 		.4byte	.LASF71
+ 1171 04bc 02       		.byte	0x2
+ 1172 04bd 06       		.uleb128 0x6
+ 1173 04be A5020000 		.4byte	.LASF72
+ 1174 04c2 03       		.byte	0x3
+ 1175 04c3 06       		.uleb128 0x6
+ 1176 04c4 24000000 		.4byte	.LASF73
+ 1177 04c8 04       		.byte	0x4
+ 1178 04c9 06       		.uleb128 0x6
+ 1179 04ca 8D020000 		.4byte	.LASF74
+ 1180 04ce 05       		.byte	0x5
+ 1181 04cf 06       		.uleb128 0x6
+ 1182 04d0 8D040000 		.4byte	.LASF75
+ 1183 04d4 06       		.byte	0x6
+ 1184 04d5 06       		.uleb128 0x6
+ 1185 04d6 5B020000 		.4byte	.LASF76
+ 1186 04da 07       		.byte	0x7
+ 1187 04db 06       		.uleb128 0x6
+ 1188 04dc E2020000 		.4byte	.LASF77
+ 1189 04e0 08       		.byte	0x8
+ 1190 04e1 06       		.uleb128 0x6
+ 1191 04e2 05060000 		.4byte	.LASF78
+ 1192 04e6 09       		.byte	0x9
+ 1193 04e7 06       		.uleb128 0x6
+ 1194 04e8 70050000 		.4byte	.LASF79
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 28
+
+
+ 1195 04ec 0A       		.byte	0xa
+ 1196 04ed 06       		.uleb128 0x6
+ 1197 04ee 6E000000 		.4byte	.LASF80
+ 1198 04f2 0B       		.byte	0xb
+ 1199 04f3 06       		.uleb128 0x6
+ 1200 04f4 76040000 		.4byte	.LASF81
+ 1201 04f8 0C       		.byte	0xc
+ 1202 04f9 06       		.uleb128 0x6
+ 1203 04fa DE060000 		.4byte	.LASF82
+ 1204 04fe 0D       		.byte	0xd
+ 1205 04ff 06       		.uleb128 0x6
+ 1206 0500 0F000000 		.4byte	.LASF83
+ 1207 0504 0E       		.byte	0xe
+ 1208 0505 00       		.byte	0
+ 1209 0506 03       		.uleb128 0x3
+ 1210 0507 EB010000 		.4byte	.LASF84
+ 1211 050b 0A       		.byte	0xa
+ 1212 050c 33       		.byte	0x33
+ 1213 050d 9F040000 		.4byte	0x49f
+ 1214 0511 11       		.uleb128 0x11
+ 1215 0512 4C       		.byte	0x4c
+ 1216 0513 0A       		.byte	0xa
+ 1217 0514 36       		.byte	0x36
+ 1218 0515 92050000 		.4byte	0x592
+ 1219 0519 0C       		.uleb128 0xc
+ 1220 051a CA000000 		.4byte	.LASF85
+ 1221 051e 0A       		.byte	0xa
+ 1222 051f 38       		.byte	0x38
+ 1223 0520 0E030000 		.4byte	0x30e
+ 1224 0524 00       		.byte	0
+ 1225 0525 0C       		.uleb128 0xc
+ 1226 0526 50040000 		.4byte	.LASF86
+ 1227 052a 0A       		.byte	0xa
+ 1228 052b 39       		.byte	0x39
+ 1229 052c 0E030000 		.4byte	0x30e
+ 1230 0530 10       		.byte	0x10
+ 1231 0531 0C       		.uleb128 0xc
+ 1232 0532 1A020000 		.4byte	.LASF87
+ 1233 0536 0A       		.byte	0xa
+ 1234 0537 3A       		.byte	0x3a
+ 1235 0538 0E030000 		.4byte	0x30e
+ 1236 053c 20       		.byte	0x20
+ 1237 053d 0C       		.uleb128 0xc
+ 1238 053e 1B000000 		.4byte	.LASF88
+ 1239 0542 0A       		.byte	0xa
+ 1240 0543 3B       		.byte	0x3b
+ 1241 0544 B8000000 		.4byte	0xb8
+ 1242 0548 30       		.byte	0x30
+ 1243 0549 0C       		.uleb128 0xc
+ 1244 054a 2E010000 		.4byte	.LASF89
+ 1245 054e 0A       		.byte	0xa
+ 1246 054f 3C       		.byte	0x3c
+ 1247 0550 97000000 		.4byte	0x97
+ 1248 0554 34       		.byte	0x34
+ 1249 0555 0C       		.uleb128 0xc
+ 1250 0556 5E040000 		.4byte	.LASF90
+ 1251 055a 0A       		.byte	0xa
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 29
+
+
+ 1252 055b 3D       		.byte	0x3d
+ 1253 055c EE010000 		.4byte	0x1ee
+ 1254 0560 38       		.byte	0x38
+ 1255 0561 0C       		.uleb128 0xc
+ 1256 0562 E9050000 		.4byte	.LASF91
+ 1257 0566 0A       		.byte	0xa
+ 1258 0567 3E       		.byte	0x3e
+ 1259 0568 EE010000 		.4byte	0x1ee
+ 1260 056c 3C       		.byte	0x3c
+ 1261 056d 0C       		.uleb128 0xc
+ 1262 056e 81030000 		.4byte	.LASF92
+ 1263 0572 0A       		.byte	0xa
+ 1264 0573 3F       		.byte	0x3f
+ 1265 0574 EE010000 		.4byte	0x1ee
+ 1266 0578 40       		.byte	0x40
+ 1267 0579 0C       		.uleb128 0xc
+ 1268 057a B9060000 		.4byte	.LASF93
+ 1269 057e 0A       		.byte	0xa
+ 1270 057f 40       		.byte	0x40
+ 1271 0580 EE010000 		.4byte	0x1ee
+ 1272 0584 44       		.byte	0x44
+ 1273 0585 0C       		.uleb128 0xc
+ 1274 0586 3E000000 		.4byte	.LASF94
+ 1275 058a 0A       		.byte	0xa
+ 1276 058b 41       		.byte	0x41
+ 1277 058c EE010000 		.4byte	0x1ee
+ 1278 0590 48       		.byte	0x48
+ 1279 0591 00       		.byte	0
+ 1280 0592 03       		.uleb128 0x3
+ 1281 0593 5C000000 		.4byte	.LASF95
+ 1282 0597 0A       		.byte	0xa
+ 1283 0598 42       		.byte	0x42
+ 1284 0599 11050000 		.4byte	0x511
+ 1285 059d 11       		.uleb128 0x11
+ 1286 059e 04       		.byte	0x4
+ 1287 059f 0A       		.byte	0xa
+ 1288 05a0 45       		.byte	0x45
+ 1289 05a1 B2050000 		.4byte	0x5b2
+ 1290 05a5 0C       		.uleb128 0xc
+ 1291 05a6 68040000 		.4byte	.LASF96
+ 1292 05aa 0A       		.byte	0xa
+ 1293 05ab 47       		.byte	0x47
+ 1294 05ac EE010000 		.4byte	0x1ee
+ 1295 05b0 00       		.byte	0
+ 1296 05b1 00       		.byte	0
+ 1297 05b2 03       		.uleb128 0x3
+ 1298 05b3 AB050000 		.4byte	.LASF97
+ 1299 05b7 0A       		.byte	0xa
+ 1300 05b8 48       		.byte	0x48
+ 1301 05b9 9D050000 		.4byte	0x59d
+ 1302 05bd 05       		.uleb128 0x5
+ 1303 05be 01       		.byte	0x1
+ 1304 05bf 37000000 		.4byte	0x37
+ 1305 05c3 01       		.byte	0x1
+ 1306 05c4 2E       		.byte	0x2e
+ 1307 05c5 DC050000 		.4byte	0x5dc
+ 1308 05c9 06       		.uleb128 0x6
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 30
+
+
+ 1309 05ca 80000000 		.4byte	.LASF98
+ 1310 05ce 00       		.byte	0
+ 1311 05cf 06       		.uleb128 0x6
+ 1312 05d0 88000000 		.4byte	.LASF99
+ 1313 05d4 01       		.byte	0x1
+ 1314 05d5 06       		.uleb128 0x6
+ 1315 05d6 90000000 		.4byte	.LASF100
+ 1316 05da 02       		.byte	0x2
+ 1317 05db 00       		.byte	0
+ 1318 05dc 03       		.uleb128 0x3
+ 1319 05dd 46020000 		.4byte	.LASF101
+ 1320 05e1 01       		.byte	0x1
+ 1321 05e2 32       		.byte	0x32
+ 1322 05e3 BD050000 		.4byte	0x5bd
+ 1323 05e7 05       		.uleb128 0x5
+ 1324 05e8 01       		.byte	0x1
+ 1325 05e9 37000000 		.4byte	0x37
+ 1326 05ed 01       		.byte	0x1
+ 1327 05ee 35       		.byte	0x35
+ 1328 05ef 06060000 		.4byte	0x606
+ 1329 05f3 06       		.uleb128 0x6
+ 1330 05f4 30030000 		.4byte	.LASF102
+ 1331 05f8 05       		.byte	0x5
+ 1332 05f9 06       		.uleb128 0x6
+ 1333 05fa 3E030000 		.4byte	.LASF103
+ 1334 05fe 0A       		.byte	0xa
+ 1335 05ff 06       		.uleb128 0x6
+ 1336 0600 EF000000 		.4byte	.LASF104
+ 1337 0604 1E       		.byte	0x1e
+ 1338 0605 00       		.byte	0
+ 1339 0606 11       		.uleb128 0x11
+ 1340 0607 03       		.byte	0x3
+ 1341 0608 01       		.byte	0x1
+ 1342 0609 3B       		.byte	0x3b
+ 1343 060a 33060000 		.4byte	0x633
+ 1344 060e 0D       		.uleb128 0xd
+ 1345 060f 70343600 		.ascii	"p46\000"
+ 1346 0613 01       		.byte	0x1
+ 1347 0614 3D       		.byte	0x3d
+ 1348 0615 97000000 		.4byte	0x97
+ 1349 0619 00       		.byte	0
+ 1350 061a 0D       		.uleb128 0xd
+ 1351 061b 70373000 		.ascii	"p70\000"
+ 1352 061f 01       		.byte	0x1
+ 1353 0620 3E       		.byte	0x3e
+ 1354 0621 E3000000 		.4byte	0xe3
+ 1355 0625 01       		.byte	0x1
+ 1356 0626 0D       		.uleb128 0xd
+ 1357 0627 70373100 		.ascii	"p71\000"
+ 1358 062b 01       		.byte	0x1
+ 1359 062c 3F       		.byte	0x3f
+ 1360 062d E3000000 		.4byte	0xe3
+ 1361 0631 02       		.byte	0x2
+ 1362 0632 00       		.byte	0
+ 1363 0633 03       		.uleb128 0x3
+ 1364 0634 4D020000 		.4byte	.LASF105
+ 1365 0638 01       		.byte	0x1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 31
+
+
+ 1366 0639 40       		.byte	0x40
+ 1367 063a 06060000 		.4byte	0x606
+ 1368 063e 17       		.uleb128 0x17
+ 1369 063f F5050000 		.4byte	.LASF140
+ 1370 0643 01       		.byte	0x1
+ 1371 0644 71       		.byte	0x71
+ 1372 0645 B8000000 		.4byte	0xb8
+ 1373 0649 00000000 		.4byte	.LFB43
+ 1374 064d 2A000000 		.4byte	.LFE43-.LFB43
+ 1375 0651 01       		.uleb128 0x1
+ 1376 0652 9C       		.byte	0x9c
+ 1377 0653 AB060000 		.4byte	0x6ab
+ 1378 0657 18       		.uleb128 0x18
+ 1379 0658 09020000 		.4byte	.LASF106
+ 1380 065c 01       		.byte	0x1
+ 1381 065d 71       		.byte	0x71
+ 1382 065e 42040000 		.4byte	0x442
+ 1383 0662 00000000 		.4byte	.LLST0
+ 1384 0666 19       		.uleb128 0x19
+ 1385 0667 EF030000 		.4byte	.LASF61
+ 1386 066b 01       		.byte	0x1
+ 1387 066c 71       		.byte	0x71
+ 1388 066d 62040000 		.4byte	0x462
+ 1389 0671 01       		.uleb128 0x1
+ 1390 0672 51       		.byte	0x51
+ 1391 0673 1A       		.uleb128 0x1a
+ 1392 0674 8B010000 		.4byte	.LASF107
+ 1393 0678 01       		.byte	0x1
+ 1394 0679 73       		.byte	0x73
+ 1395 067a AB060000 		.4byte	0x6ab
+ 1396 067e 3A000000 		.4byte	.LLST1
+ 1397 0682 1A       		.uleb128 0x1a
+ 1398 0683 BD050000 		.4byte	.LASF108
+ 1399 0687 01       		.byte	0x1
+ 1400 0688 74       		.byte	0x74
+ 1401 0689 B1060000 		.4byte	0x6b1
+ 1402 068d 66000000 		.4byte	.LLST2
+ 1403 0691 1B       		.uleb128 0x1b
+ 1404 0692 00000000 		.4byte	.LBB2
+ 1405 0696 28000000 		.4byte	.LBE2-.LBB2
+ 1406 069a 1A       		.uleb128 0x1a
+ 1407 069b CC050000 		.4byte	.LASF109
+ 1408 069f 01       		.byte	0x1
+ 1409 06a0 77       		.byte	0x77
+ 1410 06a1 EE000000 		.4byte	0xee
+ 1411 06a5 92000000 		.4byte	.LLST3
+ 1412 06a9 00       		.byte	0
+ 1413 06aa 00       		.byte	0
+ 1414 06ab 09       		.uleb128 0x9
+ 1415 06ac 04       		.byte	0x4
+ 1416 06ad 92050000 		.4byte	0x592
+ 1417 06b1 09       		.uleb128 0x9
+ 1418 06b2 04       		.byte	0x4
+ 1419 06b3 B7060000 		.4byte	0x6b7
+ 1420 06b7 10       		.uleb128 0x10
+ 1421 06b8 B2050000 		.4byte	0x5b2
+ 1422 06bc 1C       		.uleb128 0x1c
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 32
+
+
+ 1423 06bd 22030000 		.4byte	.LASF110
+ 1424 06c1 01       		.byte	0x1
+ 1425 06c2 83       		.byte	0x83
+ 1426 06c3 00000000 		.4byte	.LFB44
+ 1427 06c7 5C000000 		.4byte	.LFE44-.LFB44
+ 1428 06cb 01       		.uleb128 0x1
+ 1429 06cc 9C       		.byte	0x9c
+ 1430 06cd 93070000 		.4byte	0x793
+ 1431 06d1 18       		.uleb128 0x18
+ 1432 06d2 09020000 		.4byte	.LASF106
+ 1433 06d6 01       		.byte	0x1
+ 1434 06d7 83       		.byte	0x83
+ 1435 06d8 42040000 		.4byte	0x442
+ 1436 06dc E0000000 		.4byte	.LLST4
+ 1437 06e0 1A       		.uleb128 0x1a
+ 1438 06e1 8B010000 		.4byte	.LASF107
+ 1439 06e5 01       		.byte	0x1
+ 1440 06e6 85       		.byte	0x85
+ 1441 06e7 AB060000 		.4byte	0x6ab
+ 1442 06eb 01010000 		.4byte	.LLST5
+ 1443 06ef 1A       		.uleb128 0x1a
+ 1444 06f0 BD050000 		.4byte	.LASF108
+ 1445 06f4 01       		.byte	0x1
+ 1446 06f5 86       		.byte	0x86
+ 1447 06f6 B1060000 		.4byte	0x6b1
+ 1448 06fa 14010000 		.4byte	.LLST6
+ 1449 06fe 1D       		.uleb128 0x1d
+ 1450 06ff 14000000 		.4byte	.LVL12
+ 1451 0703 CB0B0000 		.4byte	0xbcb
+ 1452 0707 1C070000 		.4byte	0x71c
+ 1453 070b 1E       		.uleb128 0x1e
+ 1454 070c 01       		.uleb128 0x1
+ 1455 070d 50       		.byte	0x50
+ 1456 070e 03       		.uleb128 0x3
+ 1457 070f F3       		.byte	0xf3
+ 1458 0710 01       		.uleb128 0x1
+ 1459 0711 50       		.byte	0x50
+ 1460 0712 1E       		.uleb128 0x1e
+ 1461 0713 01       		.uleb128 0x1
+ 1462 0714 51       		.byte	0x51
+ 1463 0715 05       		.uleb128 0x5
+ 1464 0716 03       		.byte	0x3
+ 1465 0717 00000000 		.4byte	processUiThread
+ 1466 071b 00       		.byte	0
+ 1467 071c 1D       		.uleb128 0x1d
+ 1468 071d 1C000000 		.4byte	.LVL13
+ 1469 0721 D70B0000 		.4byte	0xbd7
+ 1470 0725 2F070000 		.4byte	0x72f
+ 1471 0729 1E       		.uleb128 0x1e
+ 1472 072a 01       		.uleb128 0x1
+ 1473 072b 51       		.byte	0x51
+ 1474 072c 01       		.uleb128 0x1
+ 1475 072d 30       		.byte	0x30
+ 1476 072e 00       		.byte	0
+ 1477 072f 1D       		.uleb128 0x1d
+ 1478 0730 24000000 		.4byte	.LVL14
+ 1479 0734 D70B0000 		.4byte	0xbd7
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 33
+
+
+ 1480 0738 42070000 		.4byte	0x742
+ 1481 073c 1E       		.uleb128 0x1e
+ 1482 073d 01       		.uleb128 0x1
+ 1483 073e 51       		.byte	0x51
+ 1484 073f 01       		.uleb128 0x1
+ 1485 0740 30       		.byte	0x30
+ 1486 0741 00       		.byte	0
+ 1487 0742 1D       		.uleb128 0x1d
+ 1488 0743 2C000000 		.4byte	.LVL15
+ 1489 0747 D70B0000 		.4byte	0xbd7
+ 1490 074b 55070000 		.4byte	0x755
+ 1491 074f 1E       		.uleb128 0x1e
+ 1492 0750 01       		.uleb128 0x1
+ 1493 0751 51       		.byte	0x51
+ 1494 0752 01       		.uleb128 0x1
+ 1495 0753 30       		.byte	0x30
+ 1496 0754 00       		.byte	0
+ 1497 0755 1D       		.uleb128 0x1d
+ 1498 0756 34000000 		.4byte	.LVL16
+ 1499 075a D70B0000 		.4byte	0xbd7
+ 1500 075e 68070000 		.4byte	0x768
+ 1501 0762 1E       		.uleb128 0x1e
+ 1502 0763 01       		.uleb128 0x1
+ 1503 0764 51       		.byte	0x51
+ 1504 0765 01       		.uleb128 0x1
+ 1505 0766 30       		.byte	0x30
+ 1506 0767 00       		.byte	0
+ 1507 0768 1D       		.uleb128 0x1d
+ 1508 0769 3C000000 		.4byte	.LVL17
+ 1509 076d E20B0000 		.4byte	0xbe2
+ 1510 0771 7B070000 		.4byte	0x77b
+ 1511 0775 1E       		.uleb128 0x1e
+ 1512 0776 01       		.uleb128 0x1
+ 1513 0777 51       		.byte	0x51
+ 1514 0778 01       		.uleb128 0x1
+ 1515 0779 4E       		.byte	0x4e
+ 1516 077a 00       		.byte	0
+ 1517 077b 1F       		.uleb128 0x1f
+ 1518 077c 46000000 		.4byte	.LVL18
+ 1519 0780 ED0B0000 		.4byte	0xbed
+ 1520 0784 1E       		.uleb128 0x1e
+ 1521 0785 01       		.uleb128 0x1
+ 1522 0786 50       		.byte	0x50
+ 1523 0787 02       		.uleb128 0x2
+ 1524 0788 74       		.byte	0x74
+ 1525 0789 10       		.sleb128 16
+ 1526 078a 1E       		.uleb128 0x1e
+ 1527 078b 01       		.uleb128 0x1
+ 1528 078c 51       		.byte	0x51
+ 1529 078d 03       		.uleb128 0x3
+ 1530 078e 0A       		.byte	0xa
+ 1531 078f FC08     		.2byte	0x8fc
+ 1532 0791 00       		.byte	0
+ 1533 0792 00       		.byte	0
+ 1534 0793 1C       		.uleb128 0x1c
+ 1535 0794 2E000000 		.4byte	.LASF111
+ 1536 0798 01       		.byte	0x1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 34
+
+
+ 1537 0799 9C       		.byte	0x9c
+ 1538 079a 00000000 		.4byte	.LFB45
+ 1539 079e 18000000 		.4byte	.LFE45-.LFB45
+ 1540 07a2 01       		.uleb128 0x1
+ 1541 07a3 9C       		.byte	0x9c
+ 1542 07a4 E6070000 		.4byte	0x7e6
+ 1543 07a8 18       		.uleb128 0x18
+ 1544 07a9 09020000 		.4byte	.LASF106
+ 1545 07ad 01       		.byte	0x1
+ 1546 07ae 9C       		.byte	0x9c
+ 1547 07af 42040000 		.4byte	0x442
+ 1548 07b3 27010000 		.4byte	.LLST7
+ 1549 07b7 1A       		.uleb128 0x1a
+ 1550 07b8 8B010000 		.4byte	.LASF107
+ 1551 07bc 01       		.byte	0x1
+ 1552 07bd 9E       		.byte	0x9e
+ 1553 07be AB060000 		.4byte	0x6ab
+ 1554 07c2 53010000 		.4byte	.LLST8
+ 1555 07c6 1A       		.uleb128 0x1a
+ 1556 07c7 BD050000 		.4byte	.LASF108
+ 1557 07cb 01       		.byte	0x1
+ 1558 07cc 9F       		.byte	0x9f
+ 1559 07cd B1060000 		.4byte	0x6b1
+ 1560 07d1 67010000 		.4byte	.LLST9
+ 1561 07d5 1F       		.uleb128 0x1f
+ 1562 07d6 12000000 		.4byte	.LVL23
+ 1563 07da F90B0000 		.4byte	0xbf9
+ 1564 07de 1E       		.uleb128 0x1e
+ 1565 07df 01       		.uleb128 0x1
+ 1566 07e0 50       		.byte	0x50
+ 1567 07e1 02       		.uleb128 0x2
+ 1568 07e2 74       		.byte	0x74
+ 1569 07e3 00       		.sleb128 0
+ 1570 07e4 00       		.byte	0
+ 1571 07e5 00       		.byte	0
+ 1572 07e6 20       		.uleb128 0x20
+ 1573 07e7 0B030000 		.4byte	.LASF112
+ 1574 07eb 01       		.byte	0x1
+ 1575 07ec 1101     		.2byte	0x111
+ 1576 07ee 00000000 		.4byte	.LFB48
+ 1577 07f2 28000000 		.4byte	.LFE48-.LFB48
+ 1578 07f6 01       		.uleb128 0x1
+ 1579 07f7 9C       		.byte	0x9c
+ 1580 07f8 56080000 		.4byte	0x856
+ 1581 07fc 21       		.uleb128 0x21
+ 1582 07fd 09020000 		.4byte	.LASF106
+ 1583 0801 01       		.byte	0x1
+ 1584 0802 1101     		.2byte	0x111
+ 1585 0804 42040000 		.4byte	0x442
+ 1586 0808 7B010000 		.4byte	.LLST10
+ 1587 080c 22       		.uleb128 0x22
+ 1588 080d 6C656400 		.ascii	"led\000"
+ 1589 0811 01       		.byte	0x1
+ 1590 0812 1101     		.2byte	0x111
+ 1591 0814 DC050000 		.4byte	0x5dc
+ 1592 0818 9C010000 		.4byte	.LLST11
+ 1593 081c 21       		.uleb128 0x21
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 35
+
+
+ 1594 081d B9020000 		.4byte	.LASF113
+ 1595 0821 01       		.byte	0x1
+ 1596 0822 1101     		.2byte	0x111
+ 1597 0824 F5000000 		.4byte	0xf5
+ 1598 0828 D6010000 		.4byte	.LLST12
+ 1599 082c 23       		.uleb128 0x23
+ 1600 082d 8B010000 		.4byte	.LASF107
+ 1601 0831 01       		.byte	0x1
+ 1602 0832 1301     		.2byte	0x113
+ 1603 0834 AB060000 		.4byte	0x6ab
+ 1604 0838 10020000 		.4byte	.LLST13
+ 1605 083c 23       		.uleb128 0x23
+ 1606 083d BD050000 		.4byte	.LASF108
+ 1607 0841 01       		.byte	0x1
+ 1608 0842 1401     		.2byte	0x114
+ 1609 0844 B1060000 		.4byte	0x6b1
+ 1610 0848 23020000 		.4byte	.LLST14
+ 1611 084c 24       		.uleb128 0x24
+ 1612 084d 26000000 		.4byte	.LVL35
+ 1613 0851 E20B0000 		.4byte	0xbe2
+ 1614 0855 00       		.byte	0
+ 1615 0856 25       		.uleb128 0x25
+ 1616 0857 EE040000 		.4byte	.LASF141
+ 1617 085b 01       		.byte	0x1
+ 1618 085c AB       		.byte	0xab
+ 1619 085d 00000000 		.4byte	.LFB46
+ 1620 0861 60000000 		.4byte	.LFE46-.LFB46
+ 1621 0865 01       		.uleb128 0x1
+ 1622 0866 9C       		.byte	0x9c
+ 1623 0867 43090000 		.4byte	0x943
+ 1624 086b 18       		.uleb128 0x18
+ 1625 086c 09020000 		.4byte	.LASF106
+ 1626 0870 01       		.byte	0x1
+ 1627 0871 AB       		.byte	0xab
+ 1628 0872 42040000 		.4byte	0x442
+ 1629 0876 43020000 		.4byte	.LLST15
+ 1630 087a 1A       		.uleb128 0x1a
+ 1631 087b 8B010000 		.4byte	.LASF107
+ 1632 087f 01       		.byte	0x1
+ 1633 0880 AD       		.byte	0xad
+ 1634 0881 AB060000 		.4byte	0x6ab
+ 1635 0885 85020000 		.4byte	.LLST16
+ 1636 0889 1A       		.uleb128 0x1a
+ 1637 088a BD050000 		.4byte	.LASF108
+ 1638 088e 01       		.byte	0x1
+ 1639 088f AE       		.byte	0xae
+ 1640 0890 B1060000 		.4byte	0x6b1
+ 1641 0894 A5020000 		.4byte	.LLST17
+ 1642 0898 1D       		.uleb128 0x1d
+ 1643 0899 14000000 		.4byte	.LVL38
+ 1644 089d E6070000 		.4byte	0x7e6
+ 1645 08a1 B6080000 		.4byte	0x8b6
+ 1646 08a5 1E       		.uleb128 0x1e
+ 1647 08a6 01       		.uleb128 0x1
+ 1648 08a7 50       		.byte	0x50
+ 1649 08a8 02       		.uleb128 0x2
+ 1650 08a9 74       		.byte	0x74
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 36
+
+
+ 1651 08aa 00       		.sleb128 0
+ 1652 08ab 1E       		.uleb128 0x1e
+ 1653 08ac 01       		.uleb128 0x1
+ 1654 08ad 51       		.byte	0x51
+ 1655 08ae 01       		.uleb128 0x1
+ 1656 08af 30       		.byte	0x30
+ 1657 08b0 1E       		.uleb128 0x1e
+ 1658 08b1 01       		.uleb128 0x1
+ 1659 08b2 52       		.byte	0x52
+ 1660 08b3 01       		.uleb128 0x1
+ 1661 08b4 31       		.byte	0x31
+ 1662 08b5 00       		.byte	0
+ 1663 08b6 1D       		.uleb128 0x1d
+ 1664 08b7 1E000000 		.4byte	.LVL40
+ 1665 08bb E6070000 		.4byte	0x7e6
+ 1666 08bf CE080000 		.4byte	0x8ce
+ 1667 08c3 1E       		.uleb128 0x1e
+ 1668 08c4 01       		.uleb128 0x1
+ 1669 08c5 51       		.byte	0x51
+ 1670 08c6 01       		.uleb128 0x1
+ 1671 08c7 30       		.byte	0x30
+ 1672 08c8 1E       		.uleb128 0x1e
+ 1673 08c9 01       		.uleb128 0x1
+ 1674 08ca 52       		.byte	0x52
+ 1675 08cb 01       		.uleb128 0x1
+ 1676 08cc 30       		.byte	0x30
+ 1677 08cd 00       		.byte	0
+ 1678 08ce 1D       		.uleb128 0x1d
+ 1679 08cf 30000000 		.4byte	.LVL41
+ 1680 08d3 E6070000 		.4byte	0x7e6
+ 1681 08d7 EC080000 		.4byte	0x8ec
+ 1682 08db 1E       		.uleb128 0x1e
+ 1683 08dc 01       		.uleb128 0x1
+ 1684 08dd 50       		.byte	0x50
+ 1685 08de 02       		.uleb128 0x2
+ 1686 08df 74       		.byte	0x74
+ 1687 08e0 00       		.sleb128 0
+ 1688 08e1 1E       		.uleb128 0x1e
+ 1689 08e2 01       		.uleb128 0x1
+ 1690 08e3 51       		.byte	0x51
+ 1691 08e4 01       		.uleb128 0x1
+ 1692 08e5 31       		.byte	0x31
+ 1693 08e6 1E       		.uleb128 0x1e
+ 1694 08e7 01       		.uleb128 0x1
+ 1695 08e8 52       		.byte	0x52
+ 1696 08e9 01       		.uleb128 0x1
+ 1697 08ea 31       		.byte	0x31
+ 1698 08eb 00       		.byte	0
+ 1699 08ec 1D       		.uleb128 0x1d
+ 1700 08ed 3C000000 		.4byte	.LVL42
+ 1701 08f1 E6070000 		.4byte	0x7e6
+ 1702 08f5 0A090000 		.4byte	0x90a
+ 1703 08f9 1E       		.uleb128 0x1e
+ 1704 08fa 01       		.uleb128 0x1
+ 1705 08fb 50       		.byte	0x50
+ 1706 08fc 02       		.uleb128 0x2
+ 1707 08fd 74       		.byte	0x74
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 37
+
+
+ 1708 08fe 00       		.sleb128 0
+ 1709 08ff 1E       		.uleb128 0x1e
+ 1710 0900 01       		.uleb128 0x1
+ 1711 0901 51       		.byte	0x51
+ 1712 0902 01       		.uleb128 0x1
+ 1713 0903 31       		.byte	0x31
+ 1714 0904 1E       		.uleb128 0x1e
+ 1715 0905 01       		.uleb128 0x1
+ 1716 0906 52       		.byte	0x52
+ 1717 0907 01       		.uleb128 0x1
+ 1718 0908 30       		.byte	0x30
+ 1719 0909 00       		.byte	0
+ 1720 090a 1D       		.uleb128 0x1d
+ 1721 090b 4E000000 		.4byte	.LVL43
+ 1722 090f E6070000 		.4byte	0x7e6
+ 1723 0913 28090000 		.4byte	0x928
+ 1724 0917 1E       		.uleb128 0x1e
+ 1725 0918 01       		.uleb128 0x1
+ 1726 0919 50       		.byte	0x50
+ 1727 091a 02       		.uleb128 0x2
+ 1728 091b 74       		.byte	0x74
+ 1729 091c 00       		.sleb128 0
+ 1730 091d 1E       		.uleb128 0x1e
+ 1731 091e 01       		.uleb128 0x1
+ 1732 091f 51       		.byte	0x51
+ 1733 0920 01       		.uleb128 0x1
+ 1734 0921 32       		.byte	0x32
+ 1735 0922 1E       		.uleb128 0x1e
+ 1736 0923 01       		.uleb128 0x1
+ 1737 0924 52       		.byte	0x52
+ 1738 0925 01       		.uleb128 0x1
+ 1739 0926 31       		.byte	0x31
+ 1740 0927 00       		.byte	0
+ 1741 0928 1F       		.uleb128 0x1f
+ 1742 0929 5A000000 		.4byte	.LVL44
+ 1743 092d E6070000 		.4byte	0x7e6
+ 1744 0931 1E       		.uleb128 0x1e
+ 1745 0932 01       		.uleb128 0x1
+ 1746 0933 50       		.byte	0x50
+ 1747 0934 02       		.uleb128 0x2
+ 1748 0935 74       		.byte	0x74
+ 1749 0936 00       		.sleb128 0
+ 1750 0937 1E       		.uleb128 0x1e
+ 1751 0938 01       		.uleb128 0x1
+ 1752 0939 51       		.byte	0x51
+ 1753 093a 01       		.uleb128 0x1
+ 1754 093b 32       		.byte	0x32
+ 1755 093c 1E       		.uleb128 0x1e
+ 1756 093d 01       		.uleb128 0x1
+ 1757 093e 52       		.byte	0x52
+ 1758 093f 01       		.uleb128 0x1
+ 1759 0940 30       		.byte	0x30
+ 1760 0941 00       		.byte	0
+ 1761 0942 00       		.byte	0
+ 1762 0943 20       		.uleb128 0x20
+ 1763 0944 39010000 		.4byte	.LASF114
+ 1764 0948 01       		.byte	0x1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 38
+
+
+ 1765 0949 2501     		.2byte	0x125
+ 1766 094b 00000000 		.4byte	.LFB49
+ 1767 094f 1E000000 		.4byte	.LFE49-.LFB49
+ 1768 0953 01       		.uleb128 0x1
+ 1769 0954 9C       		.byte	0x9c
+ 1770 0955 C6090000 		.4byte	0x9c6
+ 1771 0959 21       		.uleb128 0x21
+ 1772 095a 09020000 		.4byte	.LASF106
+ 1773 095e 01       		.byte	0x1
+ 1774 095f 2501     		.2byte	0x125
+ 1775 0961 42040000 		.4byte	0x442
+ 1776 0965 C5020000 		.4byte	.LLST18
+ 1777 0969 21       		.uleb128 0x21
+ 1778 096a B9020000 		.4byte	.LASF113
+ 1779 096e 01       		.byte	0x1
+ 1780 096f 2501     		.2byte	0x125
+ 1781 0971 F5000000 		.4byte	0xf5
+ 1782 0975 F1020000 		.4byte	.LLST19
+ 1783 0979 23       		.uleb128 0x23
+ 1784 097a 8B010000 		.4byte	.LASF107
+ 1785 097e 01       		.byte	0x1
+ 1786 097f 2701     		.2byte	0x127
+ 1787 0981 AB060000 		.4byte	0x6ab
+ 1788 0985 12030000 		.4byte	.LLST20
+ 1789 0989 23       		.uleb128 0x23
+ 1790 098a BD050000 		.4byte	.LASF108
+ 1791 098e 01       		.byte	0x1
+ 1792 098f 2801     		.2byte	0x128
+ 1793 0991 B1060000 		.4byte	0x6b1
+ 1794 0995 26030000 		.4byte	.LLST21
+ 1795 0999 26       		.uleb128 0x26
+ 1796 099a 69647800 		.ascii	"idx\000"
+ 1797 099e 01       		.byte	0x1
+ 1798 099f 2C01     		.2byte	0x12c
+ 1799 09a1 F5000000 		.4byte	0xf5
+ 1800 09a5 3A030000 		.4byte	.LLST22
+ 1801 09a9 1F       		.uleb128 0x1f
+ 1802 09aa 14000000 		.4byte	.LVL49
+ 1803 09ae E6070000 		.4byte	0x7e6
+ 1804 09b2 1E       		.uleb128 0x1e
+ 1805 09b3 01       		.uleb128 0x1
+ 1806 09b4 50       		.byte	0x50
+ 1807 09b5 02       		.uleb128 0x2
+ 1808 09b6 76       		.byte	0x76
+ 1809 09b7 00       		.sleb128 0
+ 1810 09b8 1E       		.uleb128 0x1e
+ 1811 09b9 01       		.uleb128 0x1
+ 1812 09ba 51       		.byte	0x51
+ 1813 09bb 02       		.uleb128 0x2
+ 1814 09bc 74       		.byte	0x74
+ 1815 09bd 00       		.sleb128 0
+ 1816 09be 1E       		.uleb128 0x1e
+ 1817 09bf 01       		.uleb128 0x1
+ 1818 09c0 52       		.byte	0x52
+ 1819 09c1 02       		.uleb128 0x2
+ 1820 09c2 75       		.byte	0x75
+ 1821 09c3 00       		.sleb128 0
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 39
+
+
+ 1822 09c4 00       		.byte	0
+ 1823 09c5 00       		.byte	0
+ 1824 09c6 20       		.uleb128 0x20
+ 1825 09c7 43040000 		.4byte	.LASF115
+ 1826 09cb 01       		.byte	0x1
+ 1827 09cc 3301     		.2byte	0x133
+ 1828 09ce 00000000 		.4byte	.LFB50
+ 1829 09d2 5C000000 		.4byte	.LFE50-.LFB50
+ 1830 09d6 01       		.uleb128 0x1
+ 1831 09d7 9C       		.byte	0x9c
+ 1832 09d8 980A0000 		.4byte	0xa98
+ 1833 09dc 21       		.uleb128 0x21
+ 1834 09dd 09020000 		.4byte	.LASF106
+ 1835 09e1 01       		.byte	0x1
+ 1836 09e2 3301     		.2byte	0x133
+ 1837 09e4 42040000 		.4byte	0x442
+ 1838 09e8 64030000 		.4byte	.LLST23
+ 1839 09ec 21       		.uleb128 0x21
+ 1840 09ed 66020000 		.4byte	.LASF46
+ 1841 09f1 01       		.byte	0x1
+ 1842 09f2 3301     		.2byte	0x133
+ 1843 09f4 06050000 		.4byte	0x506
+ 1844 09f8 85030000 		.4byte	.LLST24
+ 1845 09fc 21       		.uleb128 0x21
+ 1846 09fd B9030000 		.4byte	.LASF116
+ 1847 0a01 01       		.byte	0x1
+ 1848 0a02 3301     		.2byte	0x133
+ 1849 0a04 AD000000 		.4byte	0xad
+ 1850 0a08 A6030000 		.4byte	.LLST25
+ 1851 0a0c 21       		.uleb128 0x21
+ 1852 0a0d 99010000 		.4byte	.LASF117
+ 1853 0a11 01       		.byte	0x1
+ 1854 0a12 3301     		.2byte	0x133
+ 1855 0a14 980A0000 		.4byte	0xa98
+ 1856 0a18 C7030000 		.4byte	.LLST26
+ 1857 0a1c 23       		.uleb128 0x23
+ 1858 0a1d 8B010000 		.4byte	.LASF107
+ 1859 0a21 01       		.byte	0x1
+ 1860 0a22 3501     		.2byte	0x135
+ 1861 0a24 AB060000 		.4byte	0x6ab
+ 1862 0a28 F3030000 		.4byte	.LLST27
+ 1863 0a2c 23       		.uleb128 0x23
+ 1864 0a2d BD050000 		.4byte	.LASF108
+ 1865 0a31 01       		.byte	0x1
+ 1866 0a32 3601     		.2byte	0x136
+ 1867 0a34 B1060000 		.4byte	0x6b1
+ 1868 0a38 06040000 		.4byte	.LLST28
+ 1869 0a3c 27       		.uleb128 0x27
+ 1870 0a3d D0010000 		.4byte	.LASF118
+ 1871 0a41 01       		.byte	0x1
+ 1872 0a42 3B01     		.2byte	0x13b
+ 1873 0a44 AD000000 		.4byte	0xad
+ 1874 0a48 02       		.uleb128 0x2
+ 1875 0a49 91       		.byte	0x91
+ 1876 0a4a 66       		.sleb128 -26
+ 1877 0a4b 1D       		.uleb128 0x1d
+ 1878 0a4c 1A000000 		.4byte	.LVL60
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 40
+
+
+ 1879 0a50 050C0000 		.4byte	0xc05
+ 1880 0a54 640A0000 		.4byte	0xa64
+ 1881 0a58 1E       		.uleb128 0x1e
+ 1882 0a59 01       		.uleb128 0x1
+ 1883 0a5a 50       		.byte	0x50
+ 1884 0a5b 02       		.uleb128 0x2
+ 1885 0a5c 74       		.byte	0x74
+ 1886 0a5d 00       		.sleb128 0
+ 1887 0a5e 1E       		.uleb128 0x1e
+ 1888 0a5f 01       		.uleb128 0x1
+ 1889 0a60 52       		.byte	0x52
+ 1890 0a61 01       		.uleb128 0x1
+ 1891 0a62 32       		.byte	0x32
+ 1892 0a63 00       		.byte	0
+ 1893 0a64 1D       		.uleb128 0x1d
+ 1894 0a65 40000000 		.4byte	.LVL61
+ 1895 0a69 0E0C0000 		.4byte	0xc0e
+ 1896 0a6d 840A0000 		.4byte	0xa84
+ 1897 0a71 1E       		.uleb128 0x1e
+ 1898 0a72 01       		.uleb128 0x1
+ 1899 0a73 51       		.byte	0x51
+ 1900 0a74 04       		.uleb128 0x4
+ 1901 0a75 91       		.byte	0x91
+ 1902 0a76 5C       		.sleb128 -36
+ 1903 0a77 94       		.byte	0x94
+ 1904 0a78 01       		.byte	0x1
+ 1905 0a79 1E       		.uleb128 0x1e
+ 1906 0a7a 01       		.uleb128 0x1
+ 1907 0a7b 52       		.byte	0x52
+ 1908 0a7c 01       		.uleb128 0x1
+ 1909 0a7d 30       		.byte	0x30
+ 1910 0a7e 1E       		.uleb128 0x1e
+ 1911 0a7f 01       		.uleb128 0x1
+ 1912 0a80 53       		.byte	0x53
+ 1913 0a81 01       		.uleb128 0x1
+ 1914 0a82 30       		.byte	0x30
+ 1915 0a83 00       		.byte	0
+ 1916 0a84 1F       		.uleb128 0x1f
+ 1917 0a85 4A000000 		.4byte	.LVL62
+ 1918 0a89 E20B0000 		.4byte	0xbe2
+ 1919 0a8d 1E       		.uleb128 0x1e
+ 1920 0a8e 01       		.uleb128 0x1
+ 1921 0a8f 51       		.byte	0x51
+ 1922 0a90 05       		.uleb128 0x5
+ 1923 0a91 03       		.byte	0x3
+ 1924 0a92 00000000 		.4byte	.LANCHOR0
+ 1925 0a96 00       		.byte	0
+ 1926 0a97 00       		.byte	0
+ 1927 0a98 09       		.uleb128 0x9
+ 1928 0a99 04       		.byte	0x4
+ 1929 0a9a E3000000 		.4byte	0xe3
+ 1930 0a9e 28       		.uleb128 0x28
+ 1931 0a9f AE0A0000 		.4byte	0xaae
+ 1932 0aa3 AE0A0000 		.4byte	0xaae
+ 1933 0aa7 29       		.uleb128 0x29
+ 1934 0aa8 0F010000 		.4byte	0x10f
+ 1935 0aac FF       		.byte	0xff
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 41
+
+
+ 1936 0aad 00       		.byte	0
+ 1937 0aae 10       		.uleb128 0x10
+ 1938 0aaf 97000000 		.4byte	0x97
+ 1939 0ab3 2A       		.uleb128 0x2a
+ 1940 0ab4 C9020000 		.4byte	.LASF119
+ 1941 0ab8 0B       		.byte	0xb
+ 1942 0ab9 5A       		.byte	0x5a
+ 1943 0aba BE0A0000 		.4byte	0xabe
+ 1944 0abe 10       		.uleb128 0x10
+ 1945 0abf 9E0A0000 		.4byte	0xa9e
+ 1946 0ac3 2A       		.uleb128 0x2a
+ 1947 0ac4 D5020000 		.4byte	.LASF120
+ 1948 0ac8 08       		.byte	0x8
+ 1949 0ac9 A8       		.byte	0xa8
+ 1950 0aca D2020000 		.4byte	0x2d2
+ 1951 0ace 28       		.uleb128 0x28
+ 1952 0acf 97000000 		.4byte	0x97
+ 1953 0ad3 DE0A0000 		.4byte	0xade
+ 1954 0ad7 29       		.uleb128 0x29
+ 1955 0ad8 0F010000 		.4byte	0x10f
+ 1956 0adc FF       		.byte	0xff
+ 1957 0add 00       		.byte	0
+ 1958 0ade 2A       		.uleb128 0x2a
+ 1959 0adf 04040000 		.4byte	.LASF121
+ 1960 0ae3 08       		.byte	0x8
+ 1961 0ae4 A9       		.byte	0xa9
+ 1962 0ae5 CE0A0000 		.4byte	0xace
+ 1963 0ae9 2B       		.uleb128 0x2b
+ 1964 0aea 00000000 		.4byte	.LASF122
+ 1965 0aee 01       		.byte	0x1
+ 1966 0aef 42       		.byte	0x42
+ 1967 0af0 33060000 		.4byte	0x633
+ 1968 0af4 05       		.uleb128 0x5
+ 1969 0af5 03       		.byte	0x3
+ 1970 0af6 00000000 		.4byte	guiButonStatus
+ 1971 0afa 2B       		.uleb128 0x2b
+ 1972 0afb 85050000 		.4byte	.LASF123
+ 1973 0aff 01       		.byte	0x1
+ 1974 0b00 43       		.byte	0x43
+ 1975 0b01 97000000 		.4byte	0x97
+ 1976 0b05 05       		.uleb128 0x5
+ 1977 0b06 03       		.byte	0x3
+ 1978 0b07 00000000 		.4byte	sevSegCounter
+ 1979 0b0b 2B       		.uleb128 0x2b
+ 1980 0b0c 4C030000 		.4byte	.LASF124
+ 1981 0b10 01       		.byte	0x1
+ 1982 0b11 44       		.byte	0x44
+ 1983 0b12 97000000 		.4byte	0x97
+ 1984 0b16 05       		.uleb128 0x5
+ 1985 0b17 03       		.byte	0x3
+ 1986 0b18 00000000 		.4byte	encoderStat
+ 1987 0b1c 2B       		.uleb128 0x2b
+ 1988 0b1d 1C040000 		.4byte	.LASF125
+ 1989 0b21 01       		.byte	0x1
+ 1990 0b22 45       		.byte	0x45
+ 1991 0b23 97000000 		.4byte	0x97
+ 1992 0b27 05       		.uleb128 0x5
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 42
+
+
+ 1993 0b28 03       		.byte	0x3
+ 1994 0b29 00000000 		.4byte	encoderStatPrev
+ 1995 0b2d 28       		.uleb128 0x28
+ 1996 0b2e 9A040000 		.4byte	0x49a
+ 1997 0b32 3D0B0000 		.4byte	0xb3d
+ 1998 0b36 29       		.uleb128 0x29
+ 1999 0b37 0F010000 		.4byte	0x10f
+ 2000 0b3b 0C       		.byte	0xc
+ 2001 0b3c 00       		.byte	0
+ 2002 0b3d 2B       		.uleb128 0x2b
+ 2003 0b3e 29050000 		.4byte	.LASF126
+ 2004 0b42 01       		.byte	0x1
+ 2005 0b43 48       		.byte	0x48
+ 2006 0b44 4E0B0000 		.4byte	0xb4e
+ 2007 0b48 05       		.uleb128 0x5
+ 2008 0b49 03       		.byte	0x3
+ 2009 0b4a 00000000 		.4byte	melodyArcelik
+ 2010 0b4e 10       		.uleb128 0x10
+ 2011 0b4f 2D0B0000 		.4byte	0xb2d
+ 2012 0b53 28       		.uleb128 0x28
+ 2013 0b54 9A040000 		.4byte	0x49a
+ 2014 0b58 630B0000 		.4byte	0xb63
+ 2015 0b5c 29       		.uleb128 0x29
+ 2016 0b5d 0F010000 		.4byte	0x10f
+ 2017 0b61 01       		.byte	0x1
+ 2018 0b62 00       		.byte	0
+ 2019 0b63 2B       		.uleb128 0x2b
+ 2020 0b64 F2020000 		.4byte	.LASF127
+ 2021 0b68 01       		.byte	0x1
+ 2022 0b69 4F       		.byte	0x4f
+ 2023 0b6a 740B0000 		.4byte	0xb74
+ 2024 0b6e 05       		.uleb128 0x5
+ 2025 0b6f 03       		.byte	0x3
+ 2026 0b70 00000000 		.4byte	melodyPres
+ 2027 0b74 10       		.uleb128 0x10
+ 2028 0b75 530B0000 		.4byte	0xb53
+ 2029 0b79 2B       		.uleb128 0x2b
+ 2030 0b7a 98000000 		.4byte	.LASF128
+ 2031 0b7e 01       		.byte	0x1
+ 2032 0b7f 55       		.byte	0x55
+ 2033 0b80 8A0B0000 		.4byte	0xb8a
+ 2034 0b84 05       		.uleb128 0x5
+ 2035 0b85 03       		.byte	0x3
+ 2036 0b86 00000000 		.4byte	melodyRelease
+ 2037 0b8a 10       		.uleb128 0x10
+ 2038 0b8b 530B0000 		.4byte	0xb53
+ 2039 0b8f 28       		.uleb128 0x28
+ 2040 0b90 9A040000 		.4byte	0x49a
+ 2041 0b94 9F0B0000 		.4byte	0xb9f
+ 2042 0b98 29       		.uleb128 0x29
+ 2043 0b99 0F010000 		.4byte	0x10f
+ 2044 0b9d 03       		.byte	0x3
+ 2045 0b9e 00       		.byte	0
+ 2046 0b9f 2B       		.uleb128 0x2b
+ 2047 0ba0 23020000 		.4byte	.LASF129
+ 2048 0ba4 01       		.byte	0x1
+ 2049 0ba5 5B       		.byte	0x5b
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 43
+
+
+ 2050 0ba6 B00B0000 		.4byte	0xbb0
+ 2051 0baa 05       		.uleb128 0x5
+ 2052 0bab 03       		.byte	0x3
+ 2053 0bac 00000000 		.4byte	melodyKeyWarning
+ 2054 0bb0 10       		.uleb128 0x10
+ 2055 0bb1 8F0B0000 		.4byte	0xb8f
+ 2056 0bb5 2B       		.uleb128 0x2b
+ 2057 0bb6 46010000 		.4byte	.LASF130
+ 2058 0bba 01       		.byte	0x1
+ 2059 0bbb 62       		.byte	0x62
+ 2060 0bbc C60B0000 		.4byte	0xbc6
+ 2061 0bc0 05       		.uleb128 0x5
+ 2062 0bc1 03       		.byte	0x3
+ 2063 0bc2 00000000 		.4byte	melodyLock
+ 2064 0bc6 10       		.uleb128 0x10
+ 2065 0bc7 8F0B0000 		.4byte	0xb8f
+ 2066 0bcb 2C       		.uleb128 0x2c
+ 2067 0bcc A7030000 		.4byte	.LASF131
+ 2068 0bd0 A7030000 		.4byte	.LASF131
+ 2069 0bd4 08       		.byte	0x8
+ 2070 0bd5 9C02     		.2byte	0x29c
+ 2071 0bd7 2D       		.uleb128 0x2d
+ 2072 0bd8 FF040000 		.4byte	.LASF132
+ 2073 0bdc FF040000 		.4byte	.LASF132
+ 2074 0be0 07       		.byte	0x7
+ 2075 0be1 6C       		.byte	0x6c
+ 2076 0be2 2D       		.uleb128 0x2d
+ 2077 0be3 E6030000 		.4byte	.LASF133
+ 2078 0be7 E6030000 		.4byte	.LASF133
+ 2079 0beb 07       		.byte	0x7
+ 2080 0bec 7F       		.byte	0x7f
+ 2081 0bed 2C       		.uleb128 0x2c
+ 2082 0bee CE060000 		.4byte	.LASF134
+ 2083 0bf2 CE060000 		.4byte	.LASF134
+ 2084 0bf6 08       		.byte	0x8
+ 2085 0bf7 7B01     		.2byte	0x17b
+ 2086 0bf9 2C       		.uleb128 0x2c
+ 2087 0bfa 99040000 		.4byte	.LASF135
+ 2088 0bfe 99040000 		.4byte	.LASF135
+ 2089 0c02 08       		.byte	0x8
+ 2090 0c03 A402     		.2byte	0x2a4
+ 2091 0c05 2E       		.uleb128 0x2e
+ 2092 0c06 74010000 		.4byte	.LASF142
+ 2093 0c0a 74010000 		.4byte	.LASF142
+ 2094 0c0e 2D       		.uleb128 0x2d
+ 2095 0c0f C7030000 		.4byte	.LASF136
+ 2096 0c13 C7030000 		.4byte	.LASF136
+ 2097 0c17 08       		.byte	0x8
+ 2098 0c18 8F       		.byte	0x8f
+ 2099 0c19 00       		.byte	0
+ 2100              		.section	.debug_abbrev,"",%progbits
+ 2101              	.Ldebug_abbrev0:
+ 2102 0000 01       		.uleb128 0x1
+ 2103 0001 11       		.uleb128 0x11
+ 2104 0002 01       		.byte	0x1
+ 2105 0003 25       		.uleb128 0x25
+ 2106 0004 0E       		.uleb128 0xe
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 44
+
+
+ 2107 0005 13       		.uleb128 0x13
+ 2108 0006 0B       		.uleb128 0xb
+ 2109 0007 03       		.uleb128 0x3
+ 2110 0008 0E       		.uleb128 0xe
+ 2111 0009 1B       		.uleb128 0x1b
+ 2112 000a 0E       		.uleb128 0xe
+ 2113 000b 55       		.uleb128 0x55
+ 2114 000c 17       		.uleb128 0x17
+ 2115 000d 11       		.uleb128 0x11
+ 2116 000e 01       		.uleb128 0x1
+ 2117 000f 10       		.uleb128 0x10
+ 2118 0010 17       		.uleb128 0x17
+ 2119 0011 00       		.byte	0
+ 2120 0012 00       		.byte	0
+ 2121 0013 02       		.uleb128 0x2
+ 2122 0014 24       		.uleb128 0x24
+ 2123 0015 00       		.byte	0
+ 2124 0016 0B       		.uleb128 0xb
+ 2125 0017 0B       		.uleb128 0xb
+ 2126 0018 3E       		.uleb128 0x3e
+ 2127 0019 0B       		.uleb128 0xb
+ 2128 001a 03       		.uleb128 0x3
+ 2129 001b 0E       		.uleb128 0xe
+ 2130 001c 00       		.byte	0
+ 2131 001d 00       		.byte	0
+ 2132 001e 03       		.uleb128 0x3
+ 2133 001f 16       		.uleb128 0x16
+ 2134 0020 00       		.byte	0
+ 2135 0021 03       		.uleb128 0x3
+ 2136 0022 0E       		.uleb128 0xe
+ 2137 0023 3A       		.uleb128 0x3a
+ 2138 0024 0B       		.uleb128 0xb
+ 2139 0025 3B       		.uleb128 0x3b
+ 2140 0026 0B       		.uleb128 0xb
+ 2141 0027 49       		.uleb128 0x49
+ 2142 0028 13       		.uleb128 0x13
+ 2143 0029 00       		.byte	0
+ 2144 002a 00       		.byte	0
+ 2145 002b 04       		.uleb128 0x4
+ 2146 002c 24       		.uleb128 0x24
+ 2147 002d 00       		.byte	0
+ 2148 002e 0B       		.uleb128 0xb
+ 2149 002f 0B       		.uleb128 0xb
+ 2150 0030 3E       		.uleb128 0x3e
+ 2151 0031 0B       		.uleb128 0xb
+ 2152 0032 03       		.uleb128 0x3
+ 2153 0033 08       		.uleb128 0x8
+ 2154 0034 00       		.byte	0
+ 2155 0035 00       		.byte	0
+ 2156 0036 05       		.uleb128 0x5
+ 2157 0037 04       		.uleb128 0x4
+ 2158 0038 01       		.byte	0x1
+ 2159 0039 0B       		.uleb128 0xb
+ 2160 003a 0B       		.uleb128 0xb
+ 2161 003b 49       		.uleb128 0x49
+ 2162 003c 13       		.uleb128 0x13
+ 2163 003d 3A       		.uleb128 0x3a
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 45
+
+
+ 2164 003e 0B       		.uleb128 0xb
+ 2165 003f 3B       		.uleb128 0x3b
+ 2166 0040 0B       		.uleb128 0xb
+ 2167 0041 01       		.uleb128 0x1
+ 2168 0042 13       		.uleb128 0x13
+ 2169 0043 00       		.byte	0
+ 2170 0044 00       		.byte	0
+ 2171 0045 06       		.uleb128 0x6
+ 2172 0046 28       		.uleb128 0x28
+ 2173 0047 00       		.byte	0
+ 2174 0048 03       		.uleb128 0x3
+ 2175 0049 0E       		.uleb128 0xe
+ 2176 004a 1C       		.uleb128 0x1c
+ 2177 004b 0B       		.uleb128 0xb
+ 2178 004c 00       		.byte	0
+ 2179 004d 00       		.byte	0
+ 2180 004e 07       		.uleb128 0x7
+ 2181 004f 16       		.uleb128 0x16
+ 2182 0050 00       		.byte	0
+ 2183 0051 03       		.uleb128 0x3
+ 2184 0052 0E       		.uleb128 0xe
+ 2185 0053 3A       		.uleb128 0x3a
+ 2186 0054 0B       		.uleb128 0xb
+ 2187 0055 3B       		.uleb128 0x3b
+ 2188 0056 05       		.uleb128 0x5
+ 2189 0057 49       		.uleb128 0x49
+ 2190 0058 13       		.uleb128 0x13
+ 2191 0059 00       		.byte	0
+ 2192 005a 00       		.byte	0
+ 2193 005b 08       		.uleb128 0x8
+ 2194 005c 0F       		.uleb128 0xf
+ 2195 005d 00       		.byte	0
+ 2196 005e 0B       		.uleb128 0xb
+ 2197 005f 0B       		.uleb128 0xb
+ 2198 0060 00       		.byte	0
+ 2199 0061 00       		.byte	0
+ 2200 0062 09       		.uleb128 0x9
+ 2201 0063 0F       		.uleb128 0xf
+ 2202 0064 00       		.byte	0
+ 2203 0065 0B       		.uleb128 0xb
+ 2204 0066 0B       		.uleb128 0xb
+ 2205 0067 49       		.uleb128 0x49
+ 2206 0068 13       		.uleb128 0x13
+ 2207 0069 00       		.byte	0
+ 2208 006a 00       		.byte	0
+ 2209 006b 0A       		.uleb128 0xa
+ 2210 006c 26       		.uleb128 0x26
+ 2211 006d 00       		.byte	0
+ 2212 006e 00       		.byte	0
+ 2213 006f 00       		.byte	0
+ 2214 0070 0B       		.uleb128 0xb
+ 2215 0071 13       		.uleb128 0x13
+ 2216 0072 01       		.byte	0x1
+ 2217 0073 03       		.uleb128 0x3
+ 2218 0074 0E       		.uleb128 0xe
+ 2219 0075 0B       		.uleb128 0xb
+ 2220 0076 0B       		.uleb128 0xb
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 46
+
+
+ 2221 0077 3A       		.uleb128 0x3a
+ 2222 0078 0B       		.uleb128 0xb
+ 2223 0079 3B       		.uleb128 0x3b
+ 2224 007a 0B       		.uleb128 0xb
+ 2225 007b 01       		.uleb128 0x1
+ 2226 007c 13       		.uleb128 0x13
+ 2227 007d 00       		.byte	0
+ 2228 007e 00       		.byte	0
+ 2229 007f 0C       		.uleb128 0xc
+ 2230 0080 0D       		.uleb128 0xd
+ 2231 0081 00       		.byte	0
+ 2232 0082 03       		.uleb128 0x3
+ 2233 0083 0E       		.uleb128 0xe
+ 2234 0084 3A       		.uleb128 0x3a
+ 2235 0085 0B       		.uleb128 0xb
+ 2236 0086 3B       		.uleb128 0x3b
+ 2237 0087 0B       		.uleb128 0xb
+ 2238 0088 49       		.uleb128 0x49
+ 2239 0089 13       		.uleb128 0x13
+ 2240 008a 38       		.uleb128 0x38
+ 2241 008b 0B       		.uleb128 0xb
+ 2242 008c 00       		.byte	0
+ 2243 008d 00       		.byte	0
+ 2244 008e 0D       		.uleb128 0xd
+ 2245 008f 0D       		.uleb128 0xd
+ 2246 0090 00       		.byte	0
+ 2247 0091 03       		.uleb128 0x3
+ 2248 0092 08       		.uleb128 0x8
+ 2249 0093 3A       		.uleb128 0x3a
+ 2250 0094 0B       		.uleb128 0xb
+ 2251 0095 3B       		.uleb128 0x3b
+ 2252 0096 0B       		.uleb128 0xb
+ 2253 0097 49       		.uleb128 0x49
+ 2254 0098 13       		.uleb128 0x13
+ 2255 0099 38       		.uleb128 0x38
+ 2256 009a 0B       		.uleb128 0xb
+ 2257 009b 00       		.byte	0
+ 2258 009c 00       		.byte	0
+ 2259 009d 0E       		.uleb128 0xe
+ 2260 009e 15       		.uleb128 0x15
+ 2261 009f 01       		.byte	0x1
+ 2262 00a0 27       		.uleb128 0x27
+ 2263 00a1 19       		.uleb128 0x19
+ 2264 00a2 49       		.uleb128 0x49
+ 2265 00a3 13       		.uleb128 0x13
+ 2266 00a4 01       		.uleb128 0x1
+ 2267 00a5 13       		.uleb128 0x13
+ 2268 00a6 00       		.byte	0
+ 2269 00a7 00       		.byte	0
+ 2270 00a8 0F       		.uleb128 0xf
+ 2271 00a9 05       		.uleb128 0x5
+ 2272 00aa 00       		.byte	0
+ 2273 00ab 49       		.uleb128 0x49
+ 2274 00ac 13       		.uleb128 0x13
+ 2275 00ad 00       		.byte	0
+ 2276 00ae 00       		.byte	0
+ 2277 00af 10       		.uleb128 0x10
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 47
+
+
+ 2278 00b0 26       		.uleb128 0x26
+ 2279 00b1 00       		.byte	0
+ 2280 00b2 49       		.uleb128 0x49
+ 2281 00b3 13       		.uleb128 0x13
+ 2282 00b4 00       		.byte	0
+ 2283 00b5 00       		.byte	0
+ 2284 00b6 11       		.uleb128 0x11
+ 2285 00b7 13       		.uleb128 0x13
+ 2286 00b8 01       		.byte	0x1
+ 2287 00b9 0B       		.uleb128 0xb
+ 2288 00ba 0B       		.uleb128 0xb
+ 2289 00bb 3A       		.uleb128 0x3a
+ 2290 00bc 0B       		.uleb128 0xb
+ 2291 00bd 3B       		.uleb128 0x3b
+ 2292 00be 0B       		.uleb128 0xb
+ 2293 00bf 01       		.uleb128 0x1
+ 2294 00c0 13       		.uleb128 0x13
+ 2295 00c1 00       		.byte	0
+ 2296 00c2 00       		.byte	0
+ 2297 00c3 12       		.uleb128 0x12
+ 2298 00c4 13       		.uleb128 0x13
+ 2299 00c5 01       		.byte	0x1
+ 2300 00c6 0B       		.uleb128 0xb
+ 2301 00c7 0B       		.uleb128 0xb
+ 2302 00c8 3A       		.uleb128 0x3a
+ 2303 00c9 0B       		.uleb128 0xb
+ 2304 00ca 3B       		.uleb128 0x3b
+ 2305 00cb 05       		.uleb128 0x5
+ 2306 00cc 01       		.uleb128 0x1
+ 2307 00cd 13       		.uleb128 0x13
+ 2308 00ce 00       		.byte	0
+ 2309 00cf 00       		.byte	0
+ 2310 00d0 13       		.uleb128 0x13
+ 2311 00d1 0D       		.uleb128 0xd
+ 2312 00d2 00       		.byte	0
+ 2313 00d3 03       		.uleb128 0x3
+ 2314 00d4 08       		.uleb128 0x8
+ 2315 00d5 3A       		.uleb128 0x3a
+ 2316 00d6 0B       		.uleb128 0xb
+ 2317 00d7 3B       		.uleb128 0x3b
+ 2318 00d8 05       		.uleb128 0x5
+ 2319 00d9 49       		.uleb128 0x49
+ 2320 00da 13       		.uleb128 0x13
+ 2321 00db 38       		.uleb128 0x38
+ 2322 00dc 0B       		.uleb128 0xb
+ 2323 00dd 00       		.byte	0
+ 2324 00de 00       		.byte	0
+ 2325 00df 14       		.uleb128 0x14
+ 2326 00e0 0D       		.uleb128 0xd
+ 2327 00e1 00       		.byte	0
+ 2328 00e2 03       		.uleb128 0x3
+ 2329 00e3 0E       		.uleb128 0xe
+ 2330 00e4 3A       		.uleb128 0x3a
+ 2331 00e5 0B       		.uleb128 0xb
+ 2332 00e6 3B       		.uleb128 0x3b
+ 2333 00e7 05       		.uleb128 0x5
+ 2334 00e8 49       		.uleb128 0x49
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 48
+
+
+ 2335 00e9 13       		.uleb128 0x13
+ 2336 00ea 38       		.uleb128 0x38
+ 2337 00eb 0B       		.uleb128 0xb
+ 2338 00ec 00       		.byte	0
+ 2339 00ed 00       		.byte	0
+ 2340 00ee 15       		.uleb128 0x15
+ 2341 00ef 13       		.uleb128 0x13
+ 2342 00f0 01       		.byte	0x1
+ 2343 00f1 03       		.uleb128 0x3
+ 2344 00f2 0E       		.uleb128 0xe
+ 2345 00f3 0B       		.uleb128 0xb
+ 2346 00f4 0B       		.uleb128 0xb
+ 2347 00f5 3A       		.uleb128 0x3a
+ 2348 00f6 0B       		.uleb128 0xb
+ 2349 00f7 3B       		.uleb128 0x3b
+ 2350 00f8 05       		.uleb128 0x5
+ 2351 00f9 01       		.uleb128 0x1
+ 2352 00fa 13       		.uleb128 0x13
+ 2353 00fb 00       		.byte	0
+ 2354 00fc 00       		.byte	0
+ 2355 00fd 16       		.uleb128 0x16
+ 2356 00fe 15       		.uleb128 0x15
+ 2357 00ff 01       		.byte	0x1
+ 2358 0100 27       		.uleb128 0x27
+ 2359 0101 19       		.uleb128 0x19
+ 2360 0102 01       		.uleb128 0x1
+ 2361 0103 13       		.uleb128 0x13
+ 2362 0104 00       		.byte	0
+ 2363 0105 00       		.byte	0
+ 2364 0106 17       		.uleb128 0x17
+ 2365 0107 2E       		.uleb128 0x2e
+ 2366 0108 01       		.byte	0x1
+ 2367 0109 03       		.uleb128 0x3
+ 2368 010a 0E       		.uleb128 0xe
+ 2369 010b 3A       		.uleb128 0x3a
+ 2370 010c 0B       		.uleb128 0xb
+ 2371 010d 3B       		.uleb128 0x3b
+ 2372 010e 0B       		.uleb128 0xb
+ 2373 010f 27       		.uleb128 0x27
+ 2374 0110 19       		.uleb128 0x19
+ 2375 0111 49       		.uleb128 0x49
+ 2376 0112 13       		.uleb128 0x13
+ 2377 0113 11       		.uleb128 0x11
+ 2378 0114 01       		.uleb128 0x1
+ 2379 0115 12       		.uleb128 0x12
+ 2380 0116 06       		.uleb128 0x6
+ 2381 0117 40       		.uleb128 0x40
+ 2382 0118 18       		.uleb128 0x18
+ 2383 0119 9742     		.uleb128 0x2117
+ 2384 011b 19       		.uleb128 0x19
+ 2385 011c 01       		.uleb128 0x1
+ 2386 011d 13       		.uleb128 0x13
+ 2387 011e 00       		.byte	0
+ 2388 011f 00       		.byte	0
+ 2389 0120 18       		.uleb128 0x18
+ 2390 0121 05       		.uleb128 0x5
+ 2391 0122 00       		.byte	0
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 49
+
+
+ 2392 0123 03       		.uleb128 0x3
+ 2393 0124 0E       		.uleb128 0xe
+ 2394 0125 3A       		.uleb128 0x3a
+ 2395 0126 0B       		.uleb128 0xb
+ 2396 0127 3B       		.uleb128 0x3b
+ 2397 0128 0B       		.uleb128 0xb
+ 2398 0129 49       		.uleb128 0x49
+ 2399 012a 13       		.uleb128 0x13
+ 2400 012b 02       		.uleb128 0x2
+ 2401 012c 17       		.uleb128 0x17
+ 2402 012d 00       		.byte	0
+ 2403 012e 00       		.byte	0
+ 2404 012f 19       		.uleb128 0x19
+ 2405 0130 05       		.uleb128 0x5
+ 2406 0131 00       		.byte	0
+ 2407 0132 03       		.uleb128 0x3
+ 2408 0133 0E       		.uleb128 0xe
+ 2409 0134 3A       		.uleb128 0x3a
+ 2410 0135 0B       		.uleb128 0xb
+ 2411 0136 3B       		.uleb128 0x3b
+ 2412 0137 0B       		.uleb128 0xb
+ 2413 0138 49       		.uleb128 0x49
+ 2414 0139 13       		.uleb128 0x13
+ 2415 013a 02       		.uleb128 0x2
+ 2416 013b 18       		.uleb128 0x18
+ 2417 013c 00       		.byte	0
+ 2418 013d 00       		.byte	0
+ 2419 013e 1A       		.uleb128 0x1a
+ 2420 013f 34       		.uleb128 0x34
+ 2421 0140 00       		.byte	0
+ 2422 0141 03       		.uleb128 0x3
+ 2423 0142 0E       		.uleb128 0xe
+ 2424 0143 3A       		.uleb128 0x3a
+ 2425 0144 0B       		.uleb128 0xb
+ 2426 0145 3B       		.uleb128 0x3b
+ 2427 0146 0B       		.uleb128 0xb
+ 2428 0147 49       		.uleb128 0x49
+ 2429 0148 13       		.uleb128 0x13
+ 2430 0149 02       		.uleb128 0x2
+ 2431 014a 17       		.uleb128 0x17
+ 2432 014b 00       		.byte	0
+ 2433 014c 00       		.byte	0
+ 2434 014d 1B       		.uleb128 0x1b
+ 2435 014e 0B       		.uleb128 0xb
+ 2436 014f 01       		.byte	0x1
+ 2437 0150 11       		.uleb128 0x11
+ 2438 0151 01       		.uleb128 0x1
+ 2439 0152 12       		.uleb128 0x12
+ 2440 0153 06       		.uleb128 0x6
+ 2441 0154 00       		.byte	0
+ 2442 0155 00       		.byte	0
+ 2443 0156 1C       		.uleb128 0x1c
+ 2444 0157 2E       		.uleb128 0x2e
+ 2445 0158 01       		.byte	0x1
+ 2446 0159 3F       		.uleb128 0x3f
+ 2447 015a 19       		.uleb128 0x19
+ 2448 015b 03       		.uleb128 0x3
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 50
+
+
+ 2449 015c 0E       		.uleb128 0xe
+ 2450 015d 3A       		.uleb128 0x3a
+ 2451 015e 0B       		.uleb128 0xb
+ 2452 015f 3B       		.uleb128 0x3b
+ 2453 0160 0B       		.uleb128 0xb
+ 2454 0161 27       		.uleb128 0x27
+ 2455 0162 19       		.uleb128 0x19
+ 2456 0163 11       		.uleb128 0x11
+ 2457 0164 01       		.uleb128 0x1
+ 2458 0165 12       		.uleb128 0x12
+ 2459 0166 06       		.uleb128 0x6
+ 2460 0167 40       		.uleb128 0x40
+ 2461 0168 18       		.uleb128 0x18
+ 2462 0169 9742     		.uleb128 0x2117
+ 2463 016b 19       		.uleb128 0x19
+ 2464 016c 01       		.uleb128 0x1
+ 2465 016d 13       		.uleb128 0x13
+ 2466 016e 00       		.byte	0
+ 2467 016f 00       		.byte	0
+ 2468 0170 1D       		.uleb128 0x1d
+ 2469 0171 898201   		.uleb128 0x4109
+ 2470 0174 01       		.byte	0x1
+ 2471 0175 11       		.uleb128 0x11
+ 2472 0176 01       		.uleb128 0x1
+ 2473 0177 31       		.uleb128 0x31
+ 2474 0178 13       		.uleb128 0x13
+ 2475 0179 01       		.uleb128 0x1
+ 2476 017a 13       		.uleb128 0x13
+ 2477 017b 00       		.byte	0
+ 2478 017c 00       		.byte	0
+ 2479 017d 1E       		.uleb128 0x1e
+ 2480 017e 8A8201   		.uleb128 0x410a
+ 2481 0181 00       		.byte	0
+ 2482 0182 02       		.uleb128 0x2
+ 2483 0183 18       		.uleb128 0x18
+ 2484 0184 9142     		.uleb128 0x2111
+ 2485 0186 18       		.uleb128 0x18
+ 2486 0187 00       		.byte	0
+ 2487 0188 00       		.byte	0
+ 2488 0189 1F       		.uleb128 0x1f
+ 2489 018a 898201   		.uleb128 0x4109
+ 2490 018d 01       		.byte	0x1
+ 2491 018e 11       		.uleb128 0x11
+ 2492 018f 01       		.uleb128 0x1
+ 2493 0190 31       		.uleb128 0x31
+ 2494 0191 13       		.uleb128 0x13
+ 2495 0192 00       		.byte	0
+ 2496 0193 00       		.byte	0
+ 2497 0194 20       		.uleb128 0x20
+ 2498 0195 2E       		.uleb128 0x2e
+ 2499 0196 01       		.byte	0x1
+ 2500 0197 3F       		.uleb128 0x3f
+ 2501 0198 19       		.uleb128 0x19
+ 2502 0199 03       		.uleb128 0x3
+ 2503 019a 0E       		.uleb128 0xe
+ 2504 019b 3A       		.uleb128 0x3a
+ 2505 019c 0B       		.uleb128 0xb
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 51
+
+
+ 2506 019d 3B       		.uleb128 0x3b
+ 2507 019e 05       		.uleb128 0x5
+ 2508 019f 27       		.uleb128 0x27
+ 2509 01a0 19       		.uleb128 0x19
+ 2510 01a1 11       		.uleb128 0x11
+ 2511 01a2 01       		.uleb128 0x1
+ 2512 01a3 12       		.uleb128 0x12
+ 2513 01a4 06       		.uleb128 0x6
+ 2514 01a5 40       		.uleb128 0x40
+ 2515 01a6 18       		.uleb128 0x18
+ 2516 01a7 9742     		.uleb128 0x2117
+ 2517 01a9 19       		.uleb128 0x19
+ 2518 01aa 01       		.uleb128 0x1
+ 2519 01ab 13       		.uleb128 0x13
+ 2520 01ac 00       		.byte	0
+ 2521 01ad 00       		.byte	0
+ 2522 01ae 21       		.uleb128 0x21
+ 2523 01af 05       		.uleb128 0x5
+ 2524 01b0 00       		.byte	0
+ 2525 01b1 03       		.uleb128 0x3
+ 2526 01b2 0E       		.uleb128 0xe
+ 2527 01b3 3A       		.uleb128 0x3a
+ 2528 01b4 0B       		.uleb128 0xb
+ 2529 01b5 3B       		.uleb128 0x3b
+ 2530 01b6 05       		.uleb128 0x5
+ 2531 01b7 49       		.uleb128 0x49
+ 2532 01b8 13       		.uleb128 0x13
+ 2533 01b9 02       		.uleb128 0x2
+ 2534 01ba 17       		.uleb128 0x17
+ 2535 01bb 00       		.byte	0
+ 2536 01bc 00       		.byte	0
+ 2537 01bd 22       		.uleb128 0x22
+ 2538 01be 05       		.uleb128 0x5
+ 2539 01bf 00       		.byte	0
+ 2540 01c0 03       		.uleb128 0x3
+ 2541 01c1 08       		.uleb128 0x8
+ 2542 01c2 3A       		.uleb128 0x3a
+ 2543 01c3 0B       		.uleb128 0xb
+ 2544 01c4 3B       		.uleb128 0x3b
+ 2545 01c5 05       		.uleb128 0x5
+ 2546 01c6 49       		.uleb128 0x49
+ 2547 01c7 13       		.uleb128 0x13
+ 2548 01c8 02       		.uleb128 0x2
+ 2549 01c9 17       		.uleb128 0x17
+ 2550 01ca 00       		.byte	0
+ 2551 01cb 00       		.byte	0
+ 2552 01cc 23       		.uleb128 0x23
+ 2553 01cd 34       		.uleb128 0x34
+ 2554 01ce 00       		.byte	0
+ 2555 01cf 03       		.uleb128 0x3
+ 2556 01d0 0E       		.uleb128 0xe
+ 2557 01d1 3A       		.uleb128 0x3a
+ 2558 01d2 0B       		.uleb128 0xb
+ 2559 01d3 3B       		.uleb128 0x3b
+ 2560 01d4 05       		.uleb128 0x5
+ 2561 01d5 49       		.uleb128 0x49
+ 2562 01d6 13       		.uleb128 0x13
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 52
+
+
+ 2563 01d7 02       		.uleb128 0x2
+ 2564 01d8 17       		.uleb128 0x17
+ 2565 01d9 00       		.byte	0
+ 2566 01da 00       		.byte	0
+ 2567 01db 24       		.uleb128 0x24
+ 2568 01dc 898201   		.uleb128 0x4109
+ 2569 01df 00       		.byte	0
+ 2570 01e0 11       		.uleb128 0x11
+ 2571 01e1 01       		.uleb128 0x1
+ 2572 01e2 31       		.uleb128 0x31
+ 2573 01e3 13       		.uleb128 0x13
+ 2574 01e4 00       		.byte	0
+ 2575 01e5 00       		.byte	0
+ 2576 01e6 25       		.uleb128 0x25
+ 2577 01e7 2E       		.uleb128 0x2e
+ 2578 01e8 01       		.byte	0x1
+ 2579 01e9 03       		.uleb128 0x3
+ 2580 01ea 0E       		.uleb128 0xe
+ 2581 01eb 3A       		.uleb128 0x3a
+ 2582 01ec 0B       		.uleb128 0xb
+ 2583 01ed 3B       		.uleb128 0x3b
+ 2584 01ee 0B       		.uleb128 0xb
+ 2585 01ef 27       		.uleb128 0x27
+ 2586 01f0 19       		.uleb128 0x19
+ 2587 01f1 11       		.uleb128 0x11
+ 2588 01f2 01       		.uleb128 0x1
+ 2589 01f3 12       		.uleb128 0x12
+ 2590 01f4 06       		.uleb128 0x6
+ 2591 01f5 40       		.uleb128 0x40
+ 2592 01f6 18       		.uleb128 0x18
+ 2593 01f7 9742     		.uleb128 0x2117
+ 2594 01f9 19       		.uleb128 0x19
+ 2595 01fa 01       		.uleb128 0x1
+ 2596 01fb 13       		.uleb128 0x13
+ 2597 01fc 00       		.byte	0
+ 2598 01fd 00       		.byte	0
+ 2599 01fe 26       		.uleb128 0x26
+ 2600 01ff 34       		.uleb128 0x34
+ 2601 0200 00       		.byte	0
+ 2602 0201 03       		.uleb128 0x3
+ 2603 0202 08       		.uleb128 0x8
+ 2604 0203 3A       		.uleb128 0x3a
+ 2605 0204 0B       		.uleb128 0xb
+ 2606 0205 3B       		.uleb128 0x3b
+ 2607 0206 05       		.uleb128 0x5
+ 2608 0207 49       		.uleb128 0x49
+ 2609 0208 13       		.uleb128 0x13
+ 2610 0209 02       		.uleb128 0x2
+ 2611 020a 17       		.uleb128 0x17
+ 2612 020b 00       		.byte	0
+ 2613 020c 00       		.byte	0
+ 2614 020d 27       		.uleb128 0x27
+ 2615 020e 34       		.uleb128 0x34
+ 2616 020f 00       		.byte	0
+ 2617 0210 03       		.uleb128 0x3
+ 2618 0211 0E       		.uleb128 0xe
+ 2619 0212 3A       		.uleb128 0x3a
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 53
+
+
+ 2620 0213 0B       		.uleb128 0xb
+ 2621 0214 3B       		.uleb128 0x3b
+ 2622 0215 05       		.uleb128 0x5
+ 2623 0216 49       		.uleb128 0x49
+ 2624 0217 13       		.uleb128 0x13
+ 2625 0218 02       		.uleb128 0x2
+ 2626 0219 18       		.uleb128 0x18
+ 2627 021a 00       		.byte	0
+ 2628 021b 00       		.byte	0
+ 2629 021c 28       		.uleb128 0x28
+ 2630 021d 01       		.uleb128 0x1
+ 2631 021e 01       		.byte	0x1
+ 2632 021f 49       		.uleb128 0x49
+ 2633 0220 13       		.uleb128 0x13
+ 2634 0221 01       		.uleb128 0x1
+ 2635 0222 13       		.uleb128 0x13
+ 2636 0223 00       		.byte	0
+ 2637 0224 00       		.byte	0
+ 2638 0225 29       		.uleb128 0x29
+ 2639 0226 21       		.uleb128 0x21
+ 2640 0227 00       		.byte	0
+ 2641 0228 49       		.uleb128 0x49
+ 2642 0229 13       		.uleb128 0x13
+ 2643 022a 2F       		.uleb128 0x2f
+ 2644 022b 0B       		.uleb128 0xb
+ 2645 022c 00       		.byte	0
+ 2646 022d 00       		.byte	0
+ 2647 022e 2A       		.uleb128 0x2a
+ 2648 022f 34       		.uleb128 0x34
+ 2649 0230 00       		.byte	0
+ 2650 0231 03       		.uleb128 0x3
+ 2651 0232 0E       		.uleb128 0xe
+ 2652 0233 3A       		.uleb128 0x3a
+ 2653 0234 0B       		.uleb128 0xb
+ 2654 0235 3B       		.uleb128 0x3b
+ 2655 0236 0B       		.uleb128 0xb
+ 2656 0237 49       		.uleb128 0x49
+ 2657 0238 13       		.uleb128 0x13
+ 2658 0239 3F       		.uleb128 0x3f
+ 2659 023a 19       		.uleb128 0x19
+ 2660 023b 3C       		.uleb128 0x3c
+ 2661 023c 19       		.uleb128 0x19
+ 2662 023d 00       		.byte	0
+ 2663 023e 00       		.byte	0
+ 2664 023f 2B       		.uleb128 0x2b
+ 2665 0240 34       		.uleb128 0x34
+ 2666 0241 00       		.byte	0
+ 2667 0242 03       		.uleb128 0x3
+ 2668 0243 0E       		.uleb128 0xe
+ 2669 0244 3A       		.uleb128 0x3a
+ 2670 0245 0B       		.uleb128 0xb
+ 2671 0246 3B       		.uleb128 0x3b
+ 2672 0247 0B       		.uleb128 0xb
+ 2673 0248 49       		.uleb128 0x49
+ 2674 0249 13       		.uleb128 0x13
+ 2675 024a 3F       		.uleb128 0x3f
+ 2676 024b 19       		.uleb128 0x19
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 54
+
+
+ 2677 024c 02       		.uleb128 0x2
+ 2678 024d 18       		.uleb128 0x18
+ 2679 024e 00       		.byte	0
+ 2680 024f 00       		.byte	0
+ 2681 0250 2C       		.uleb128 0x2c
+ 2682 0251 2E       		.uleb128 0x2e
+ 2683 0252 00       		.byte	0
+ 2684 0253 3F       		.uleb128 0x3f
+ 2685 0254 19       		.uleb128 0x19
+ 2686 0255 3C       		.uleb128 0x3c
+ 2687 0256 19       		.uleb128 0x19
+ 2688 0257 6E       		.uleb128 0x6e
+ 2689 0258 0E       		.uleb128 0xe
+ 2690 0259 03       		.uleb128 0x3
+ 2691 025a 0E       		.uleb128 0xe
+ 2692 025b 3A       		.uleb128 0x3a
+ 2693 025c 0B       		.uleb128 0xb
+ 2694 025d 3B       		.uleb128 0x3b
+ 2695 025e 05       		.uleb128 0x5
+ 2696 025f 00       		.byte	0
+ 2697 0260 00       		.byte	0
+ 2698 0261 2D       		.uleb128 0x2d
+ 2699 0262 2E       		.uleb128 0x2e
+ 2700 0263 00       		.byte	0
+ 2701 0264 3F       		.uleb128 0x3f
+ 2702 0265 19       		.uleb128 0x19
+ 2703 0266 3C       		.uleb128 0x3c
+ 2704 0267 19       		.uleb128 0x19
+ 2705 0268 6E       		.uleb128 0x6e
+ 2706 0269 0E       		.uleb128 0xe
+ 2707 026a 03       		.uleb128 0x3
+ 2708 026b 0E       		.uleb128 0xe
+ 2709 026c 3A       		.uleb128 0x3a
+ 2710 026d 0B       		.uleb128 0xb
+ 2711 026e 3B       		.uleb128 0x3b
+ 2712 026f 0B       		.uleb128 0xb
+ 2713 0270 00       		.byte	0
+ 2714 0271 00       		.byte	0
+ 2715 0272 2E       		.uleb128 0x2e
+ 2716 0273 2E       		.uleb128 0x2e
+ 2717 0274 00       		.byte	0
+ 2718 0275 3F       		.uleb128 0x3f
+ 2719 0276 19       		.uleb128 0x19
+ 2720 0277 3C       		.uleb128 0x3c
+ 2721 0278 19       		.uleb128 0x19
+ 2722 0279 6E       		.uleb128 0x6e
+ 2723 027a 0E       		.uleb128 0xe
+ 2724 027b 03       		.uleb128 0x3
+ 2725 027c 0E       		.uleb128 0xe
+ 2726 027d 00       		.byte	0
+ 2727 027e 00       		.byte	0
+ 2728 027f 00       		.byte	0
+ 2729              		.section	.debug_loc,"",%progbits
+ 2730              	.Ldebug_loc0:
+ 2731              	.LLST0:
+ 2732 0000 00000000 		.4byte	.LVL0
+ 2733 0004 24000000 		.4byte	.LVL6
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 55
+
+
+ 2734 0008 0100     		.2byte	0x1
+ 2735 000a 50       		.byte	0x50
+ 2736 000b 24000000 		.4byte	.LVL6
+ 2737 000f 26000000 		.4byte	.LVL7
+ 2738 0013 0400     		.2byte	0x4
+ 2739 0015 F3       		.byte	0xf3
+ 2740 0016 01       		.uleb128 0x1
+ 2741 0017 50       		.byte	0x50
+ 2742 0018 9F       		.byte	0x9f
+ 2743 0019 26000000 		.4byte	.LVL7
+ 2744 001d 28000000 		.4byte	.LVL8
+ 2745 0021 0100     		.2byte	0x1
+ 2746 0023 50       		.byte	0x50
+ 2747 0024 28000000 		.4byte	.LVL8
+ 2748 0028 2A000000 		.4byte	.LFE43
+ 2749 002c 0400     		.2byte	0x4
+ 2750 002e F3       		.byte	0xf3
+ 2751 002f 01       		.uleb128 0x1
+ 2752 0030 50       		.byte	0x50
+ 2753 0031 9F       		.byte	0x9f
+ 2754 0032 00000000 		.4byte	0
+ 2755 0036 00000000 		.4byte	0
+ 2756              	.LLST1:
+ 2757 003a 00000000 		.4byte	.LVL0
+ 2758 003e 0E000000 		.4byte	.LVL1
+ 2759 0042 0200     		.2byte	0x2
+ 2760 0044 70       		.byte	0x70
+ 2761 0045 18       		.sleb128 24
+ 2762 0046 16000000 		.4byte	.LVL2
+ 2763 004a 18000000 		.4byte	.LVL3
+ 2764 004e 0200     		.2byte	0x2
+ 2765 0050 70       		.byte	0x70
+ 2766 0051 18       		.sleb128 24
+ 2767 0052 1E000000 		.4byte	.LVL4
+ 2768 0056 22000000 		.4byte	.LVL5
+ 2769 005a 0200     		.2byte	0x2
+ 2770 005c 70       		.byte	0x70
+ 2771 005d 18       		.sleb128 24
+ 2772 005e 00000000 		.4byte	0
+ 2773 0062 00000000 		.4byte	0
+ 2774              	.LLST2:
+ 2775 0066 00000000 		.4byte	.LVL0
+ 2776 006a 0E000000 		.4byte	.LVL1
+ 2777 006e 0200     		.2byte	0x2
+ 2778 0070 70       		.byte	0x70
+ 2779 0071 1C       		.sleb128 28
+ 2780 0072 16000000 		.4byte	.LVL2
+ 2781 0076 18000000 		.4byte	.LVL3
+ 2782 007a 0200     		.2byte	0x2
+ 2783 007c 70       		.byte	0x70
+ 2784 007d 1C       		.sleb128 28
+ 2785 007e 1E000000 		.4byte	.LVL4
+ 2786 0082 22000000 		.4byte	.LVL5
+ 2787 0086 0200     		.2byte	0x2
+ 2788 0088 70       		.byte	0x70
+ 2789 0089 1C       		.sleb128 28
+ 2790 008a 00000000 		.4byte	0
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 56
+
+
+ 2791 008e 00000000 		.4byte	0
+ 2792              	.LLST3:
+ 2793 0092 00000000 		.4byte	.LVL0
+ 2794 0096 0E000000 		.4byte	.LVL1
+ 2795 009a 0200     		.2byte	0x2
+ 2796 009c 31       		.byte	0x31
+ 2797 009d 9F       		.byte	0x9f
+ 2798 009e 0E000000 		.4byte	.LVL1
+ 2799 00a2 16000000 		.4byte	.LVL2
+ 2800 00a6 0200     		.2byte	0x2
+ 2801 00a8 30       		.byte	0x30
+ 2802 00a9 9F       		.byte	0x9f
+ 2803 00aa 16000000 		.4byte	.LVL2
+ 2804 00ae 18000000 		.4byte	.LVL3
+ 2805 00b2 0200     		.2byte	0x2
+ 2806 00b4 31       		.byte	0x31
+ 2807 00b5 9F       		.byte	0x9f
+ 2808 00b6 18000000 		.4byte	.LVL3
+ 2809 00ba 1E000000 		.4byte	.LVL4
+ 2810 00be 0100     		.2byte	0x1
+ 2811 00c0 53       		.byte	0x53
+ 2812 00c1 1E000000 		.4byte	.LVL4
+ 2813 00c5 26000000 		.4byte	.LVL7
+ 2814 00c9 0200     		.2byte	0x2
+ 2815 00cb 30       		.byte	0x30
+ 2816 00cc 9F       		.byte	0x9f
+ 2817 00cd 26000000 		.4byte	.LVL7
+ 2818 00d1 28000000 		.4byte	.LVL8
+ 2819 00d5 0100     		.2byte	0x1
+ 2820 00d7 53       		.byte	0x53
+ 2821 00d8 00000000 		.4byte	0
+ 2822 00dc 00000000 		.4byte	0
+ 2823              	.LLST4:
+ 2824 00e0 00000000 		.4byte	.LVL9
+ 2825 00e4 13000000 		.4byte	.LVL12-1
+ 2826 00e8 0100     		.2byte	0x1
+ 2827 00ea 50       		.byte	0x50
+ 2828 00eb 13000000 		.4byte	.LVL12-1
+ 2829 00ef 5C000000 		.4byte	.LFE44
+ 2830 00f3 0400     		.2byte	0x4
+ 2831 00f5 F3       		.byte	0xf3
+ 2832 00f6 01       		.uleb128 0x1
+ 2833 00f7 50       		.byte	0x50
+ 2834 00f8 9F       		.byte	0x9f
+ 2835 00f9 00000000 		.4byte	0
+ 2836 00fd 00000000 		.4byte	0
+ 2837              	.LLST5:
+ 2838 0101 04000000 		.4byte	.LVL10
+ 2839 0105 4C000000 		.4byte	.LVL19
+ 2840 0109 0100     		.2byte	0x1
+ 2841 010b 54       		.byte	0x54
+ 2842 010c 00000000 		.4byte	0
+ 2843 0110 00000000 		.4byte	0
+ 2844              	.LLST6:
+ 2845 0114 06000000 		.4byte	.LVL11
+ 2846 0118 4C000000 		.4byte	.LVL20
+ 2847 011c 0100     		.2byte	0x1
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 57
+
+
+ 2848 011e 55       		.byte	0x55
+ 2849 011f 00000000 		.4byte	0
+ 2850 0123 00000000 		.4byte	0
+ 2851              	.LLST7:
+ 2852 0127 00000000 		.4byte	.LVL21
+ 2853 012b 11000000 		.4byte	.LVL23-1
+ 2854 012f 0100     		.2byte	0x1
+ 2855 0131 50       		.byte	0x50
+ 2856 0132 11000000 		.4byte	.LVL23-1
+ 2857 0136 16000000 		.4byte	.LVL24
+ 2858 013a 0100     		.2byte	0x1
+ 2859 013c 54       		.byte	0x54
+ 2860 013d 16000000 		.4byte	.LVL24
+ 2861 0141 18000000 		.4byte	.LFE45
+ 2862 0145 0400     		.2byte	0x4
+ 2863 0147 F3       		.byte	0xf3
+ 2864 0148 01       		.uleb128 0x1
+ 2865 0149 50       		.byte	0x50
+ 2866 014a 9F       		.byte	0x9f
+ 2867 014b 00000000 		.4byte	0
+ 2868 014f 00000000 		.4byte	0
+ 2869              	.LLST8:
+ 2870 0153 04000000 		.4byte	.LVL22
+ 2871 0157 11000000 		.4byte	.LVL23-1
+ 2872 015b 0200     		.2byte	0x2
+ 2873 015d 70       		.byte	0x70
+ 2874 015e 18       		.sleb128 24
+ 2875 015f 00000000 		.4byte	0
+ 2876 0163 00000000 		.4byte	0
+ 2877              	.LLST9:
+ 2878 0167 04000000 		.4byte	.LVL22
+ 2879 016b 11000000 		.4byte	.LVL23-1
+ 2880 016f 0200     		.2byte	0x2
+ 2881 0171 70       		.byte	0x70
+ 2882 0172 1C       		.sleb128 28
+ 2883 0173 00000000 		.4byte	0
+ 2884 0177 00000000 		.4byte	0
+ 2885              	.LLST10:
+ 2886 017b 00000000 		.4byte	.LVL25
+ 2887 017f 22000000 		.4byte	.LVL34
+ 2888 0183 0100     		.2byte	0x1
+ 2889 0185 50       		.byte	0x50
+ 2890 0186 22000000 		.4byte	.LVL34
+ 2891 018a 28000000 		.4byte	.LFE48
+ 2892 018e 0400     		.2byte	0x4
+ 2893 0190 F3       		.byte	0xf3
+ 2894 0191 01       		.uleb128 0x1
+ 2895 0192 50       		.byte	0x50
+ 2896 0193 9F       		.byte	0x9f
+ 2897 0194 00000000 		.4byte	0
+ 2898 0198 00000000 		.4byte	0
+ 2899              	.LLST11:
+ 2900 019c 00000000 		.4byte	.LVL25
+ 2901 01a0 0E000000 		.4byte	.LVL28
+ 2902 01a4 0100     		.2byte	0x1
+ 2903 01a6 51       		.byte	0x51
+ 2904 01a7 0E000000 		.4byte	.LVL28
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 58
+
+
+ 2905 01ab 14000000 		.4byte	.LVL30
+ 2906 01af 0400     		.2byte	0x4
+ 2907 01b1 F3       		.byte	0xf3
+ 2908 01b2 01       		.uleb128 0x1
+ 2909 01b3 51       		.byte	0x51
+ 2910 01b4 9F       		.byte	0x9f
+ 2911 01b5 14000000 		.4byte	.LVL30
+ 2912 01b9 1A000000 		.4byte	.LVL32
+ 2913 01bd 0100     		.2byte	0x1
+ 2914 01bf 51       		.byte	0x51
+ 2915 01c0 1A000000 		.4byte	.LVL32
+ 2916 01c4 28000000 		.4byte	.LFE48
+ 2917 01c8 0400     		.2byte	0x4
+ 2918 01ca F3       		.byte	0xf3
+ 2919 01cb 01       		.uleb128 0x1
+ 2920 01cc 51       		.byte	0x51
+ 2921 01cd 9F       		.byte	0x9f
+ 2922 01ce 00000000 		.4byte	0
+ 2923 01d2 00000000 		.4byte	0
+ 2924              	.LLST12:
+ 2925 01d6 00000000 		.4byte	.LVL25
+ 2926 01da 0A000000 		.4byte	.LVL27
+ 2927 01de 0100     		.2byte	0x1
+ 2928 01e0 52       		.byte	0x52
+ 2929 01e1 0A000000 		.4byte	.LVL27
+ 2930 01e5 14000000 		.4byte	.LVL30
+ 2931 01e9 0400     		.2byte	0x4
+ 2932 01eb F3       		.byte	0xf3
+ 2933 01ec 01       		.uleb128 0x1
+ 2934 01ed 52       		.byte	0x52
+ 2935 01ee 9F       		.byte	0x9f
+ 2936 01ef 14000000 		.4byte	.LVL30
+ 2937 01f3 16000000 		.4byte	.LVL31
+ 2938 01f7 0100     		.2byte	0x1
+ 2939 01f9 52       		.byte	0x52
+ 2940 01fa 16000000 		.4byte	.LVL31
+ 2941 01fe 28000000 		.4byte	.LFE48
+ 2942 0202 0400     		.2byte	0x4
+ 2943 0204 F3       		.byte	0xf3
+ 2944 0205 01       		.uleb128 0x1
+ 2945 0206 52       		.byte	0x52
+ 2946 0207 9F       		.byte	0x9f
+ 2947 0208 00000000 		.4byte	0
+ 2948 020c 00000000 		.4byte	0
+ 2949              	.LLST13:
+ 2950 0210 04000000 		.4byte	.LVL26
+ 2951 0214 25000000 		.4byte	.LVL35-1
+ 2952 0218 0100     		.2byte	0x1
+ 2953 021a 53       		.byte	0x53
+ 2954 021b 00000000 		.4byte	0
+ 2955 021f 00000000 		.4byte	0
+ 2956              	.LLST14:
+ 2957 0223 04000000 		.4byte	.LVL26
+ 2958 0227 12000000 		.4byte	.LVL29
+ 2959 022b 0200     		.2byte	0x2
+ 2960 022d 70       		.byte	0x70
+ 2961 022e 1C       		.sleb128 28
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 59
+
+
+ 2962 022f 14000000 		.4byte	.LVL30
+ 2963 0233 1E000000 		.4byte	.LVL33
+ 2964 0237 0200     		.2byte	0x2
+ 2965 0239 70       		.byte	0x70
+ 2966 023a 1C       		.sleb128 28
+ 2967 023b 00000000 		.4byte	0
+ 2968 023f 00000000 		.4byte	0
+ 2969              	.LLST15:
+ 2970 0243 00000000 		.4byte	.LVL36
+ 2971 0247 13000000 		.4byte	.LVL38-1
+ 2972 024b 0100     		.2byte	0x1
+ 2973 024d 50       		.byte	0x50
+ 2974 024e 13000000 		.4byte	.LVL38-1
+ 2975 0252 16000000 		.4byte	.LVL39
+ 2976 0256 0100     		.2byte	0x1
+ 2977 0258 54       		.byte	0x54
+ 2978 0259 16000000 		.4byte	.LVL39
+ 2979 025d 1D000000 		.4byte	.LVL40-1
+ 2980 0261 0100     		.2byte	0x1
+ 2981 0263 50       		.byte	0x50
+ 2982 0264 1D000000 		.4byte	.LVL40-1
+ 2983 0268 5A000000 		.4byte	.LVL45
+ 2984 026c 0100     		.2byte	0x1
+ 2985 026e 54       		.byte	0x54
+ 2986 026f 5A000000 		.4byte	.LVL45
+ 2987 0273 60000000 		.4byte	.LFE46
+ 2988 0277 0400     		.2byte	0x4
+ 2989 0279 F3       		.byte	0xf3
+ 2990 027a 01       		.uleb128 0x1
+ 2991 027b 50       		.byte	0x50
+ 2992 027c 9F       		.byte	0x9f
+ 2993 027d 00000000 		.4byte	0
+ 2994 0281 00000000 		.4byte	0
+ 2995              	.LLST16:
+ 2996 0285 04000000 		.4byte	.LVL37
+ 2997 0289 13000000 		.4byte	.LVL38-1
+ 2998 028d 0200     		.2byte	0x2
+ 2999 028f 70       		.byte	0x70
+ 3000 0290 18       		.sleb128 24
+ 3001 0291 16000000 		.4byte	.LVL39
+ 3002 0295 1D000000 		.4byte	.LVL40-1
+ 3003 0299 0200     		.2byte	0x2
+ 3004 029b 70       		.byte	0x70
+ 3005 029c 18       		.sleb128 24
+ 3006 029d 00000000 		.4byte	0
+ 3007 02a1 00000000 		.4byte	0
+ 3008              	.LLST17:
+ 3009 02a5 04000000 		.4byte	.LVL37
+ 3010 02a9 13000000 		.4byte	.LVL38-1
+ 3011 02ad 0200     		.2byte	0x2
+ 3012 02af 70       		.byte	0x70
+ 3013 02b0 1C       		.sleb128 28
+ 3014 02b1 16000000 		.4byte	.LVL39
+ 3015 02b5 1D000000 		.4byte	.LVL40-1
+ 3016 02b9 0200     		.2byte	0x2
+ 3017 02bb 70       		.byte	0x70
+ 3018 02bc 1C       		.sleb128 28
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 60
+
+
+ 3019 02bd 00000000 		.4byte	0
+ 3020 02c1 00000000 		.4byte	0
+ 3021              	.LLST18:
+ 3022 02c5 00000000 		.4byte	.LVL46
+ 3023 02c9 0A000000 		.4byte	.LVL48
+ 3024 02cd 0100     		.2byte	0x1
+ 3025 02cf 50       		.byte	0x50
+ 3026 02d0 0A000000 		.4byte	.LVL48
+ 3027 02d4 1C000000 		.4byte	.LVL53
+ 3028 02d8 0100     		.2byte	0x1
+ 3029 02da 56       		.byte	0x56
+ 3030 02db 1C000000 		.4byte	.LVL53
+ 3031 02df 1E000000 		.4byte	.LFE49
+ 3032 02e3 0400     		.2byte	0x4
+ 3033 02e5 F3       		.byte	0xf3
+ 3034 02e6 01       		.uleb128 0x1
+ 3035 02e7 50       		.byte	0x50
+ 3036 02e8 9F       		.byte	0x9f
+ 3037 02e9 00000000 		.4byte	0
+ 3038 02ed 00000000 		.4byte	0
+ 3039              	.LLST19:
+ 3040 02f1 00000000 		.4byte	.LVL46
+ 3041 02f5 0A000000 		.4byte	.LVL48
+ 3042 02f9 0100     		.2byte	0x1
+ 3043 02fb 51       		.byte	0x51
+ 3044 02fc 0A000000 		.4byte	.LVL48
+ 3045 0300 1E000000 		.4byte	.LFE49
+ 3046 0304 0400     		.2byte	0x4
+ 3047 0306 F3       		.byte	0xf3
+ 3048 0307 01       		.uleb128 0x1
+ 3049 0308 51       		.byte	0x51
+ 3050 0309 9F       		.byte	0x9f
+ 3051 030a 00000000 		.4byte	0
+ 3052 030e 00000000 		.4byte	0
+ 3053              	.LLST20:
+ 3054 0312 06000000 		.4byte	.LVL47
+ 3055 0316 0A000000 		.4byte	.LVL48
+ 3056 031a 0200     		.2byte	0x2
+ 3057 031c 70       		.byte	0x70
+ 3058 031d 18       		.sleb128 24
+ 3059 031e 00000000 		.4byte	0
+ 3060 0322 00000000 		.4byte	0
+ 3061              	.LLST21:
+ 3062 0326 06000000 		.4byte	.LVL47
+ 3063 032a 0A000000 		.4byte	.LVL48
+ 3064 032e 0200     		.2byte	0x2
+ 3065 0330 70       		.byte	0x70
+ 3066 0331 1C       		.sleb128 28
+ 3067 0332 00000000 		.4byte	0
+ 3068 0336 00000000 		.4byte	0
+ 3069              	.LLST22:
+ 3070 033a 06000000 		.4byte	.LVL47
+ 3071 033e 0A000000 		.4byte	.LVL48
+ 3072 0342 0200     		.2byte	0x2
+ 3073 0344 30       		.byte	0x30
+ 3074 0345 9F       		.byte	0x9f
+ 3075 0346 0A000000 		.4byte	.LVL48
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 61
+
+
+ 3076 034a 16000000 		.4byte	.LVL50
+ 3077 034e 0100     		.2byte	0x1
+ 3078 0350 54       		.byte	0x54
+ 3079 0351 18000000 		.4byte	.LVL51
+ 3080 0355 1C000000 		.4byte	.LVL52
+ 3081 0359 0100     		.2byte	0x1
+ 3082 035b 54       		.byte	0x54
+ 3083 035c 00000000 		.4byte	0
+ 3084 0360 00000000 		.4byte	0
+ 3085              	.LLST23:
+ 3086 0364 00000000 		.4byte	.LVL54
+ 3087 0368 16000000 		.4byte	.LVL59
+ 3088 036c 0100     		.2byte	0x1
+ 3089 036e 50       		.byte	0x50
+ 3090 036f 16000000 		.4byte	.LVL59
+ 3091 0373 5C000000 		.4byte	.LFE50
+ 3092 0377 0400     		.2byte	0x4
+ 3093 0379 F3       		.byte	0xf3
+ 3094 037a 01       		.uleb128 0x1
+ 3095 037b 50       		.byte	0x50
+ 3096 037c 9F       		.byte	0x9f
+ 3097 037d 00000000 		.4byte	0
+ 3098 0381 00000000 		.4byte	0
+ 3099              	.LLST24:
+ 3100 0385 00000000 		.4byte	.LVL54
+ 3101 0389 14000000 		.4byte	.LVL58
+ 3102 038d 0100     		.2byte	0x1
+ 3103 038f 51       		.byte	0x51
+ 3104 0390 14000000 		.4byte	.LVL58
+ 3105 0394 5C000000 		.4byte	.LFE50
+ 3106 0398 0400     		.2byte	0x4
+ 3107 039a F3       		.byte	0xf3
+ 3108 039b 01       		.uleb128 0x1
+ 3109 039c 51       		.byte	0x51
+ 3110 039d 9F       		.byte	0x9f
+ 3111 039e 00000000 		.4byte	0
+ 3112 03a2 00000000 		.4byte	0
+ 3113              	.LLST25:
+ 3114 03a6 00000000 		.4byte	.LVL54
+ 3115 03aa 12000000 		.4byte	.LVL57
+ 3116 03ae 0100     		.2byte	0x1
+ 3117 03b0 52       		.byte	0x52
+ 3118 03b1 12000000 		.4byte	.LVL57
+ 3119 03b5 5C000000 		.4byte	.LFE50
+ 3120 03b9 0400     		.2byte	0x4
+ 3121 03bb F3       		.byte	0xf3
+ 3122 03bc 01       		.uleb128 0x1
+ 3123 03bd 52       		.byte	0x52
+ 3124 03be 9F       		.byte	0x9f
+ 3125 03bf 00000000 		.4byte	0
+ 3126 03c3 00000000 		.4byte	0
+ 3127              	.LLST26:
+ 3128 03c7 00000000 		.4byte	.LVL54
+ 3129 03cb 0E000000 		.4byte	.LVL56
+ 3130 03cf 0100     		.2byte	0x1
+ 3131 03d1 53       		.byte	0x53
+ 3132 03d2 0E000000 		.4byte	.LVL56
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 62
+
+
+ 3133 03d6 4C000000 		.4byte	.LVL64
+ 3134 03da 0100     		.2byte	0x1
+ 3135 03dc 57       		.byte	0x57
+ 3136 03dd 4C000000 		.4byte	.LVL64
+ 3137 03e1 5C000000 		.4byte	.LFE50
+ 3138 03e5 0400     		.2byte	0x4
+ 3139 03e7 F3       		.byte	0xf3
+ 3140 03e8 01       		.uleb128 0x1
+ 3141 03e9 53       		.byte	0x53
+ 3142 03ea 9F       		.byte	0x9f
+ 3143 03eb 00000000 		.4byte	0
+ 3144 03ef 00000000 		.4byte	0
+ 3145              	.LLST27:
+ 3146 03f3 0C000000 		.4byte	.LVL55
+ 3147 03f7 4C000000 		.4byte	.LVL63
+ 3148 03fb 0100     		.2byte	0x1
+ 3149 03fd 56       		.byte	0x56
+ 3150 03fe 00000000 		.4byte	0
+ 3151 0402 00000000 		.4byte	0
+ 3152              	.LLST28:
+ 3153 0406 0C000000 		.4byte	.LVL55
+ 3154 040a 16000000 		.4byte	.LVL59
+ 3155 040e 0200     		.2byte	0x2
+ 3156 0410 70       		.byte	0x70
+ 3157 0411 1C       		.sleb128 28
+ 3158 0412 16000000 		.4byte	.LVL59
+ 3159 0416 19000000 		.4byte	.LVL60-1
+ 3160 041a 0500     		.2byte	0x5
+ 3161 041c F3       		.byte	0xf3
+ 3162 041d 01       		.uleb128 0x1
+ 3163 041e 50       		.byte	0x50
+ 3164 041f 23       		.byte	0x23
+ 3165 0420 1C       		.uleb128 0x1c
+ 3166 0421 00000000 		.4byte	0
+ 3167 0425 00000000 		.4byte	0
+ 3168              		.section	.debug_aranges,"",%progbits
+ 3169 0000 4C000000 		.4byte	0x4c
+ 3170 0004 0200     		.2byte	0x2
+ 3171 0006 00000000 		.4byte	.Ldebug_info0
+ 3172 000a 04       		.byte	0x4
+ 3173 000b 00       		.byte	0
+ 3174 000c 0000     		.2byte	0
+ 3175 000e 0000     		.2byte	0
+ 3176 0010 00000000 		.4byte	.LFB43
+ 3177 0014 2A000000 		.4byte	.LFE43-.LFB43
+ 3178 0018 00000000 		.4byte	.LFB44
+ 3179 001c 5C000000 		.4byte	.LFE44-.LFB44
+ 3180 0020 00000000 		.4byte	.LFB45
+ 3181 0024 18000000 		.4byte	.LFE45-.LFB45
+ 3182 0028 00000000 		.4byte	.LFB48
+ 3183 002c 28000000 		.4byte	.LFE48-.LFB48
+ 3184 0030 00000000 		.4byte	.LFB46
+ 3185 0034 60000000 		.4byte	.LFE46-.LFB46
+ 3186 0038 00000000 		.4byte	.LFB49
+ 3187 003c 1E000000 		.4byte	.LFE49-.LFB49
+ 3188 0040 00000000 		.4byte	.LFB50
+ 3189 0044 5C000000 		.4byte	.LFE50-.LFB50
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 63
+
+
+ 3190 0048 00000000 		.4byte	0
+ 3191 004c 00000000 		.4byte	0
+ 3192              		.section	.debug_ranges,"",%progbits
+ 3193              	.Ldebug_ranges0:
+ 3194 0000 00000000 		.4byte	.LFB43
+ 3195 0004 2A000000 		.4byte	.LFE43
+ 3196 0008 00000000 		.4byte	.LFB44
+ 3197 000c 5C000000 		.4byte	.LFE44
+ 3198 0010 00000000 		.4byte	.LFB45
+ 3199 0014 18000000 		.4byte	.LFE45
+ 3200 0018 00000000 		.4byte	.LFB48
+ 3201 001c 28000000 		.4byte	.LFE48
+ 3202 0020 00000000 		.4byte	.LFB46
+ 3203 0024 60000000 		.4byte	.LFE46
+ 3204 0028 00000000 		.4byte	.LFB49
+ 3205 002c 1E000000 		.4byte	.LFE49
+ 3206 0030 00000000 		.4byte	.LFB50
+ 3207 0034 5C000000 		.4byte	.LFE50
+ 3208 0038 00000000 		.4byte	0
+ 3209 003c 00000000 		.4byte	0
+ 3210              		.section	.debug_line,"",%progbits
+ 3211              	.Ldebug_line0:
+ 3212 0000 7F020000 		.section	.debug_str,"MS",%progbits,1
+ 3212      0200BC01 
+ 3212      00000201 
+ 3212      FB0E0D00 
+ 3212      01010101 
+ 3213              	.LASF122:
+ 3214 0000 67756942 		.ascii	"guiButonStatus\000"
+ 3214      75746F6E 
+ 3214      53746174 
+ 3214      757300
+ 3215              	.LASF83:
+ 3216 000f 70373152 		.ascii	"p71Released\000"
+ 3216      656C6561 
+ 3216      73656400 
+ 3217              	.LASF88:
+ 3218 001b 6C656453 		.ascii	"ledState\000"
+ 3218      74617465 
+ 3218      00
+ 3219              	.LASF73:
+ 3220 0024 65426C69 		.ascii	"eBlinkLed\000"
+ 3220      6E6B4C65 
+ 3220      6400
+ 3221              	.LASF111:
+ 3222 002e 70726F63 		.ascii	"processUiDeinit\000"
+ 3222      65737355 
+ 3222      69446569 
+ 3222      6E697400 
+ 3223              	.LASF94:
+ 3224 003e 656E636F 		.ascii	"encoder\000"
+ 3224      64657200 
+ 3225              	.LASF2:
+ 3226 0046 5F5F7569 		.ascii	"__uint8_t\000"
+ 3226      6E74385F 
+ 3226      7400
+ 3227              	.LASF44:
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 64
+
+
+ 3228 0050 736F7572 		.ascii	"source\000"
+ 3228      636500
+ 3229              	.LASF36:
+ 3230 0057 696E6974 		.ascii	"init\000"
+ 3230      00
+ 3231              	.LASF95:
+ 3232 005c 74735072 		.ascii	"tsProcessUiParams\000"
+ 3232      6F636573 
+ 3232      73556950 
+ 3232      6172616D 
+ 3232      7300
+ 3233              	.LASF80:
+ 3234 006e 70373150 		.ascii	"p71Pressed\000"
+ 3234      72657373 
+ 3234      656400
+ 3235              	.LASF20:
+ 3236 0079 7465426F 		.ascii	"teBool\000"
+ 3236      6F6C00
+ 3237              	.LASF98:
+ 3238 0080 654C6564 		.ascii	"eLedP43\000"
+ 3238      50343300 
+ 3239              	.LASF99:
+ 3240 0088 654C6564 		.ascii	"eLedP44\000"
+ 3240      50343400 
+ 3241              	.LASF100:
+ 3242 0090 654C6564 		.ascii	"eLedP45\000"
+ 3242      50343500 
+ 3243              	.LASF128:
+ 3244 0098 6D656C6F 		.ascii	"melodyRelease\000"
+ 3244      64795265 
+ 3244      6C656173 
+ 3244      6500
+ 3245              	.LASF52:
+ 3246 00a6 74735072 		.ascii	"tsProcess\000"
+ 3246      6F636573 
+ 3246      7300
+ 3247              	.LASF33:
+ 3248 00b0 70617261 		.ascii	"parameters\000"
+ 3248      6D657465 
+ 3248      727300
+ 3249              	.LASF60:
+ 3250 00bb 74687265 		.ascii	"threadFunction\000"
+ 3250      61644675 
+ 3250      6E637469 
+ 3250      6F6E00
+ 3251              	.LASF85:
+ 3252 00ca 67657455 		.ascii	"getUiData\000"
+ 3252      69446174 
+ 3252      6100
+ 3253              	.LASF32:
+ 3254 00d4 66756E63 		.ascii	"functions\000"
+ 3254      74696F6E 
+ 3254      7300
+ 3255              	.LASF65:
+ 3256 00de 74735468 		.ascii	"tsThread\000"
+ 3256      72656164 
+ 3256      00
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 65
+
+
+ 3257              	.LASF14:
+ 3258 00e7 696E7431 		.ascii	"int16_t\000"
+ 3258      365F7400 
+ 3259              	.LASF104:
+ 3260 00ef 6542757A 		.ascii	"eBuzzerLevel3\000"
+ 3260      7A65724C 
+ 3260      6576656C 
+ 3260      3300
+ 3261              	.LASF10:
+ 3262 00fd 6C6F6E67 		.ascii	"long long int\000"
+ 3262      206C6F6E 
+ 3262      6720696E 
+ 3262      7400
+ 3263              	.LASF0:
+ 3264 010b 7369676E 		.ascii	"signed char\000"
+ 3264      65642063 
+ 3264      68617200 
+ 3265              	.LASF11:
+ 3266 0117 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 3266      206C6F6E 
+ 3266      6720756E 
+ 3266      7369676E 
+ 3266      65642069 
+ 3267              	.LASF89:
+ 3268 012e 6C6F636B 		.ascii	"lockStatus\000"
+ 3268      53746174 
+ 3268      757300
+ 3269              	.LASF114:
+ 3270 0139 616C6C4C 		.ascii	"allLedsOnOff\000"
+ 3270      6564734F 
+ 3270      6E4F6666 
+ 3270      00
+ 3271              	.LASF130:
+ 3272 0146 6D656C6F 		.ascii	"melodyLock\000"
+ 3272      64794C6F 
+ 3272      636B00
+ 3273              	.LASF7:
+ 3274 0151 6C6F6E67 		.ascii	"long int\000"
+ 3274      20696E74 
+ 3274      00
+ 3275              	.LASF38:
+ 3276 015a 74734465 		.ascii	"tsDevIoFuncs\000"
+ 3276      76496F46 
+ 3276      756E6373 
+ 3276      00
+ 3277              	.LASF12:
+ 3278 0167 756E7369 		.ascii	"unsigned int\000"
+ 3278      676E6564 
+ 3278      20696E74 
+ 3278      00
+ 3279              	.LASF142:
+ 3280 0174 6D656D63 		.ascii	"memcpy\000"
+ 3280      707900
+ 3281              	.LASF22:
+ 3282 017b 75696E74 		.ascii	"uint8\000"
+ 3282      3800
+ 3283              	.LASF28:
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 66
+
+
+ 3284 0181 74734C64 		.ascii	"tsLdlItem\000"
+ 3284      6C497465 
+ 3284      6D00
+ 3285              	.LASF107:
+ 3286 018b 70617261 		.ascii	"params\000"
+ 3286      6D7300
+ 3287              	.LASF24:
+ 3288 0192 646F7562 		.ascii	"double\000"
+ 3288      6C6500
+ 3289              	.LASF117:
+ 3290 0199 6275746F 		.ascii	"butonStatus\000"
+ 3290      6E537461 
+ 3290      74757300 
+ 3291              	.LASF69:
+ 3292 01a5 65477569 		.ascii	"eGuiGetUi\000"
+ 3292      47657455 
+ 3292      6900
+ 3293              	.LASF8:
+ 3294 01af 5F5F7569 		.ascii	"__uint32_t\000"
+ 3294      6E743332 
+ 3294      5F7400
+ 3295              	.LASF3:
+ 3296 01ba 5F5F696E 		.ascii	"__int16_t\000"
+ 3296      7431365F 
+ 3296      7400
+ 3297              	.LASF63:
+ 3298 01c4 656E756D 		.ascii	"enumeration\000"
+ 3298      65726174 
+ 3298      696F6E00 
+ 3299              	.LASF118:
+ 3300 01d0 64757261 		.ascii	"duration\000"
+ 3300      74696F6E 
+ 3300      00
+ 3301              	.LASF66:
+ 3302 01d9 76616C75 		.ascii	"value\000"
+ 3302      6500
+ 3303              	.LASF45:
+ 3304 01df 64657374 		.ascii	"destination\000"
+ 3304      696E6174 
+ 3304      696F6E00 
+ 3305              	.LASF84:
+ 3306 01eb 74655072 		.ascii	"teProcessUiEvents\000"
+ 3306      6F636573 
+ 3306      73556945 
+ 3306      76656E74 
+ 3306      7300
+ 3307              	.LASF40:
+ 3308 01fd 696E6974 		.ascii	"initialized\000"
+ 3308      69616C69 
+ 3308      7A656400 
+ 3309              	.LASF106:
+ 3310 0209 70726F63 		.ascii	"process\000"
+ 3310      65737300 
+ 3311              	.LASF15:
+ 3312 0211 75696E74 		.ascii	"uint16_t\000"
+ 3312      31365F74 
+ 3312      00
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 67
+
+
+ 3313              	.LASF87:
+ 3314 021a 626C696E 		.ascii	"blinkLed\000"
+ 3314      6B4C6564 
+ 3314      00
+ 3315              	.LASF129:
+ 3316 0223 6D656C6F 		.ascii	"melodyKeyWarning\000"
+ 3316      64794B65 
+ 3316      79576172 
+ 3316      6E696E67 
+ 3316      00
+ 3317              	.LASF9:
+ 3318 0234 6C6F6E67 		.ascii	"long unsigned int\000"
+ 3318      20756E73 
+ 3318      69676E65 
+ 3318      6420696E 
+ 3318      7400
+ 3319              	.LASF101:
+ 3320 0246 74654C65 		.ascii	"teLeds\000"
+ 3320      647300
+ 3321              	.LASF105:
+ 3322 024d 74734275 		.ascii	"tsButonStatus\000"
+ 3322      746F6E53 
+ 3322      74617475 
+ 3322      7300
+ 3323              	.LASF76:
+ 3324 025b 70373050 		.ascii	"p70Pressed\000"
+ 3324      72657373 
+ 3324      656400
+ 3325              	.LASF46:
+ 3326 0266 6576656E 		.ascii	"event\000"
+ 3326      7400
+ 3327              	.LASF6:
+ 3328 026c 73686F72 		.ascii	"short unsigned int\000"
+ 3328      7420756E 
+ 3328      7369676E 
+ 3328      65642069 
+ 3328      6E7400
+ 3329              	.LASF71:
+ 3330 027f 65477569 		.ascii	"eGuiEncoderCW\000"
+ 3330      456E636F 
+ 3330      64657243 
+ 3330      5700
+ 3331              	.LASF74:
+ 3332 028d 70343650 		.ascii	"p46Pressed\000"
+ 3332      72657373 
+ 3332      656400
+ 3333              	.LASF62:
+ 3334 0298 7467656E 		.ascii	"tgen\000"
+ 3334      00
+ 3335              	.LASF29:
+ 3336 029d 74734465 		.ascii	"tsDevIo\000"
+ 3336      76496F00 
+ 3337              	.LASF72:
+ 3338 02a5 65477569 		.ascii	"eGuiEncoderCCW\000"
+ 3338      456E636F 
+ 3338      64657243 
+ 3338      435700
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 68
+
+
+ 3339              	.LASF50:
+ 3340 02b4 706F7374 		.ascii	"post\000"
+ 3340      00
+ 3341              	.LASF113:
+ 3342 02b9 6F6E4F66 		.ascii	"onOff\000"
+ 3342      6600
+ 3343              	.LASF64:
+ 3344 02bf 5F747354 		.ascii	"_tsThread\000"
+ 3344      68726561 
+ 3344      6400
+ 3345              	.LASF119:
+ 3346 02c9 6C757442 		.ascii	"lutBitCount\000"
+ 3346      6974436F 
+ 3346      756E7400 
+ 3347              	.LASF120:
+ 3348 02d5 6576656E 		.ascii	"eventCurrent\000"
+ 3348      74437572 
+ 3348      72656E74 
+ 3348      00
+ 3349              	.LASF77:
+ 3350 02e2 70373050 		.ascii	"p70PressedShort\000"
+ 3350      72657373 
+ 3350      65645368 
+ 3350      6F727400 
+ 3351              	.LASF127:
+ 3352 02f2 6D656C6F 		.ascii	"melodyPres\000"
+ 3352      64795072 
+ 3352      657300
+ 3353              	.LASF31:
+ 3354 02fd 5F747344 		.ascii	"_tsDevIo\000"
+ 3354      6576496F 
+ 3354      00
+ 3355              	.LASF27:
+ 3356 0306 7461696C 		.ascii	"tail\000"
+ 3356      00
+ 3357              	.LASF112:
+ 3358 030b 6C656447 		.ascii	"ledGuiHandler\000"
+ 3358      75694861 
+ 3358      6E646C65 
+ 3358      7200
+ 3359              	.LASF25:
+ 3360 0319 73697A65 		.ascii	"sizetype\000"
+ 3360      74797065 
+ 3360      00
+ 3361              	.LASF110:
+ 3362 0322 70726F63 		.ascii	"processUiInit\000"
+ 3362      65737355 
+ 3362      69496E69 
+ 3362      7400
+ 3363              	.LASF102:
+ 3364 0330 6542757A 		.ascii	"eBuzzerLevel1\000"
+ 3364      7A65724C 
+ 3364      6576656C 
+ 3364      3100
+ 3365              	.LASF103:
+ 3366 033e 6542757A 		.ascii	"eBuzzerLevel2\000"
+ 3366      7A65724C 
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 69
+
+
+ 3366      6576656C 
+ 3366      3200
+ 3367              	.LASF124:
+ 3368 034c 656E636F 		.ascii	"encoderStat\000"
+ 3368      64657253 
+ 3368      74617400 
+ 3369              	.LASF43:
+ 3370 0358 7450726F 		.ascii	"tProcessEnum\000"
+ 3370      63657373 
+ 3370      456E756D 
+ 3370      00
+ 3371              	.LASF67:
+ 3372 0365 74696D65 		.ascii	"time\000"
+ 3372      00
+ 3373              	.LASF42:
+ 3374 036a 74457665 		.ascii	"tEventEnum\000"
+ 3374      6E74456E 
+ 3374      756D00
+ 3375              	.LASF48:
+ 3376 0375 74734576 		.ascii	"tsEventPost\000"
+ 3376      656E7450 
+ 3376      6F737400 
+ 3377              	.LASF92:
+ 3378 0381 70617474 		.ascii	"patternBuzzer\000"
+ 3378      65726E42 
+ 3378      757A7A65 
+ 3378      7200
+ 3379              	.LASF70:
+ 3380 038f 65477569 		.ascii	"eGuiStopAnimation\000"
+ 3380      53746F70 
+ 3380      416E696D 
+ 3380      6174696F 
+ 3380      6E00
+ 3381              	.LASF23:
+ 3382 03a1 666C6F61 		.ascii	"float\000"
+ 3382      7400
+ 3383              	.LASF131:
+ 3384 03a7 74687265 		.ascii	"threadStart\000"
+ 3384      61645374 
+ 3384      61727400 
+ 3385              	.LASF19:
+ 3386 03b3 46414C53 		.ascii	"FALSE\000"
+ 3386      4500
+ 3387              	.LASF116:
+ 3388 03b9 70726573 		.ascii	"pressDuration\000"
+ 3388      73447572 
+ 3388      6174696F 
+ 3388      6E00
+ 3389              	.LASF136:
+ 3390 03c7 6576656E 		.ascii	"eventPost\000"
+ 3390      74506F73 
+ 3390      7400
+ 3391              	.LASF53:
+ 3392 03d1 5F747350 		.ascii	"_tsProcess\000"
+ 3392      726F6365 
+ 3392      737300
+ 3393              	.LASF58:
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 70
+
+
+ 3394 03dc 6576436E 		.ascii	"evCntLoad\000"
+ 3394      744C6F61 
+ 3394      6400
+ 3395              	.LASF133:
+ 3396 03e6 64657649 		.ascii	"devIoPut\000"
+ 3396      6F507574 
+ 3396      00
+ 3397              	.LASF61:
+ 3398 03ef 74687265 		.ascii	"thread\000"
+ 3398      616400
+ 3399              	.LASF35:
+ 3400 03f6 5F747344 		.ascii	"_tsDevIoFuncs\000"
+ 3400      6576496F 
+ 3400      46756E63 
+ 3400      7300
+ 3401              	.LASF121:
+ 3402 0404 6576656E 		.ascii	"eventData\000"
+ 3402      74446174 
+ 3402      6100
+ 3403              	.LASF1:
+ 3404 040e 756E7369 		.ascii	"unsigned char\000"
+ 3404      676E6564 
+ 3404      20636861 
+ 3404      7200
+ 3405              	.LASF125:
+ 3406 041c 656E636F 		.ascii	"encoderStatPrev\000"
+ 3406      64657253 
+ 3406      74617450 
+ 3406      72657600 
+ 3407              	.LASF57:
+ 3408 042c 74696D65 		.ascii	"timeMaxEvent\000"
+ 3408      4D617845 
+ 3408      76656E74 
+ 3408      00
+ 3409              	.LASF4:
+ 3410 0439 73686F72 		.ascii	"short int\000"
+ 3410      7420696E 
+ 3410      7400
+ 3411              	.LASF115:
+ 3412 0443 62757474 		.ascii	"buttonMapper\000"
+ 3412      6F6E4D61 
+ 3412      70706572 
+ 3412      00
+ 3413              	.LASF86:
+ 3414 0450 73746F70 		.ascii	"stopAnimation\000"
+ 3414      416E696D 
+ 3414      6174696F 
+ 3414      6E00
+ 3415              	.LASF90:
+ 3416 045e 6C656473 		.ascii	"leds\000"
+ 3416      00
+ 3417              	.LASF18:
+ 3418 0463 54525545 		.ascii	"TRUE\000"
+ 3418      00
+ 3419              	.LASF96:
+ 3420 0468 63736444 		.ascii	"csdDevIo\000"
+ 3420      6576496F 
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 71
+
+
+ 3420      00
+ 3421              	.LASF26:
+ 3422 0471 68656164 		.ascii	"head\000"
+ 3422      00
+ 3423              	.LASF81:
+ 3424 0476 70373150 		.ascii	"p71PressedShort\000"
+ 3424      72657373 
+ 3424      65645368 
+ 3424      6F727400 
+ 3425              	.LASF37:
+ 3426 0486 6465696E 		.ascii	"deinit\000"
+ 3426      697400
+ 3427              	.LASF75:
+ 3428 048d 70343652 		.ascii	"p46Released\000"
+ 3428      656C6561 
+ 3428      73656400 
+ 3429              	.LASF135:
+ 3430 0499 74687265 		.ascii	"threadStop\000"
+ 3430      61645374 
+ 3430      6F7000
+ 3431              	.LASF17:
+ 3432 04a4 6C6F6E67 		.ascii	"long double\000"
+ 3432      20646F75 
+ 3432      626C6500 
+ 3433              	.LASF47:
+ 3434 04b0 6C656E67 		.ascii	"length\000"
+ 3434      746800
+ 3435              	.LASF30:
+ 3436 04b7 5F74734C 		.ascii	"_tsLdlItem\000"
+ 3436      646C4974 
+ 3436      656D00
+ 3437              	.LASF21:
+ 3438 04c2 63686172 		.ascii	"char\000"
+ 3438      00
+ 3439              	.LASF54:
+ 3440 04c7 68616E64 		.ascii	"handlerCurrent\000"
+ 3440      6C657243 
+ 3440      75727265 
+ 3440      6E7400
+ 3441              	.LASF5:
+ 3442 04d6 5F5F7569 		.ascii	"__uint16_t\000"
+ 3442      6E743136 
+ 3442      5F7400
+ 3443              	.LASF51:
+ 3444 04e1 74735469 		.ascii	"tsTimerEvent\000"
+ 3444      6D657245 
+ 3444      76656E74 
+ 3444      00
+ 3445              	.LASF141:
+ 3446 04ee 70726F63 		.ascii	"processUiHandler\000"
+ 3446      65737355 
+ 3446      6948616E 
+ 3446      646C6572 
+ 3446      00
+ 3447              	.LASF132:
+ 3448 04ff 64657649 		.ascii	"devIoInit\000"
+ 3448      6F496E69 
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 72
+
+
+ 3448      7400
+ 3449              	.LASF34:
+ 3450 0509 636F6E73 		.ascii	"constants\000"
+ 3450      74616E74 
+ 3450      7300
+ 3451              	.LASF138:
+ 3452 0513 6170705C 		.ascii	"app\\process_ui.c\000"
+ 3452      70726F63 
+ 3452      6573735F 
+ 3452      75692E63 
+ 3452      00
+ 3453              	.LASF49:
+ 3454 0524 5F636E74 		.ascii	"_cnt\000"
+ 3454      00
+ 3455              	.LASF126:
+ 3456 0529 6D656C6F 		.ascii	"melodyArcelik\000"
+ 3456      64794172 
+ 3456      63656C69 
+ 3456      6B00
+ 3457              	.LASF139:
+ 3458 0537 433A5C55 		.ascii	"C:\\Users\\turan\\Desktop\\Dev\\Workspace01\\Test\\"
+ 3458      73657273 
+ 3458      5C747572 
+ 3458      616E5C44 
+ 3458      65736B74 
+ 3459 0563 54657374 		.ascii	"Test1P.cydsn\000"
+ 3459      31502E63 
+ 3459      7964736E 
+ 3459      00
+ 3460              	.LASF79:
+ 3461 0570 70373052 		.ascii	"p70Released\000"
+ 3461      656C6561 
+ 3461      73656400 
+ 3462              	.LASF16:
+ 3463 057c 75696E74 		.ascii	"uint32_t\000"
+ 3463      33325F74 
+ 3463      00
+ 3464              	.LASF123:
+ 3465 0585 73657653 		.ascii	"sevSegCounter\000"
+ 3465      6567436F 
+ 3465      756E7465 
+ 3465      7200
+ 3466              	.LASF55:
+ 3467 0593 68616E64 		.ascii	"handlerPrevious\000"
+ 3467      6C657250 
+ 3467      72657669 
+ 3467      6F757300 
+ 3468              	.LASF56:
+ 3469 05a3 74696D65 		.ascii	"timeMax\000"
+ 3469      4D617800 
+ 3470              	.LASF97:
+ 3471 05ab 74735072 		.ascii	"tsProcessUiConsts\000"
+ 3471      6F636573 
+ 3471      73556943 
+ 3471      6F6E7374 
+ 3471      7300
+ 3472              	.LASF108:
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 73
+
+
+ 3473 05bd 636F6E73 		.ascii	"consts\000"
+ 3473      747300
+ 3474              	.LASF13:
+ 3475 05c4 75696E74 		.ascii	"uint8_t\000"
+ 3475      385F7400 
+ 3476              	.LASF109:
+ 3477 05cc 50545F59 		.ascii	"PT_YIELD_FLAG\000"
+ 3477      49454C44 
+ 3477      5F464C41 
+ 3477      4700
+ 3478              	.LASF39:
+ 3479 05da 5F747344 		.ascii	"_tsDevIoSystem\000"
+ 3479      6576496F 
+ 3479      53797374 
+ 3479      656D00
+ 3480              	.LASF91:
+ 3481 05e9 62757A7A 		.ascii	"buzzerLevel\000"
+ 3481      65724C65 
+ 3481      76656C00 
+ 3482              	.LASF140:
+ 3483 05f5 70726F63 		.ascii	"processUiThread\000"
+ 3483      65737355 
+ 3483      69546872 
+ 3483      65616400 
+ 3484              	.LASF78:
+ 3485 0605 70373050 		.ascii	"p70PressedLong\000"
+ 3485      72657373 
+ 3485      65644C6F 
+ 3485      6E6700
+ 3486              	.LASF41:
+ 3487 0614 74734465 		.ascii	"tsDevIoSystem\000"
+ 3487      76496F53 
+ 3487      79737465 
+ 3487      6D00
+ 3488              	.LASF137:
+ 3489 0622 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 3489      43313120 
+ 3489      352E342E 
+ 3489      31203230 
+ 3489      31363036 
+ 3490 0655 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m0 -mthumb -g -O"
+ 3490      20726576 
+ 3490      6973696F 
+ 3490      6E203233 
+ 3490      37373135 
+ 3491 0688 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 3491      66756E63 
+ 3491      74696F6E 
+ 3491      2D736563 
+ 3491      74696F6E 
+ 3492              	.LASF59:
+ 3493 06b0 6576436E 		.ascii	"evCntMax\000"
+ 3493      744D6178 
+ 3493      00
+ 3494              	.LASF93:
+ 3495 06b9 73657653 		.ascii	"sevSeg\000"
+ 3495      656700
+ARM GAS  C:\Users\turan\AppData\Local\Temp\ccBc3gT3.s 			page 74
+
+
+ 3496              	.LASF68:
+ 3497 06c0 74735061 		.ascii	"tsPatternNode\000"
+ 3497      74746572 
+ 3497      6E4E6F64 
+ 3497      6500
+ 3498              	.LASF134:
+ 3499 06ce 74696D65 		.ascii	"timerEventStart\000"
+ 3499      72457665 
+ 3499      6E745374 
+ 3499      61727400 
+ 3500              	.LASF82:
+ 3501 06de 70373150 		.ascii	"p71PressedLong\000"
+ 3501      72657373 
+ 3501      65644C6F 
+ 3501      6E6700
+ 3502              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran
